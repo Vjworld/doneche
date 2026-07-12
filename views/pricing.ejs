@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <nav class="topnav">
+    <div class="brand">👻 GhostTracker AI</div>
+    <div class="nav-links">
+      <a href="/dashboard">Board</a>
+      <a href="/ats-matcher">ATS Matcher</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+  </nav>
+  <main class="simple-page">
+    <h2>Pricing</h2>
+    <% if (upgrade) { %>
+      <div class="alert">Upgrade to Pro to unlock that feature.</div>
+    <% } %>
+    <div class="pricing-cards">
+      <div class="price-card">
+        <h3>Free</h3>
+        <p class="price">₹0</p>
+        <ul>
+          <li>Track up to 10 applications</li>
+          <li>Kanban board</li>
+          <li>Ghost Alert (auto-flag after 7 days)</li>
+          <li>Follow-up email templates</li>
+        </ul>
+      </div>
+      <div class="price-card featured">
+        <h3>Pro</h3>
+        <p class="price">₹399/mo</p>
+        <ul>
+          <li>Unlimited applications</li>
+          <li>ATS Keyword Matcher</li>
+          <li>Everything in Free</li>
+        </ul>
+        <% if (user.plan === 'paid') { %>
+          <button disabled>Current Plan</button>
+        <% } else { %>
+          <form method="POST" action="/upgrade">
+            <button type="submit">Upgrade Now</button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

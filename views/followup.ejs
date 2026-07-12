@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <main class="simple-page">
+    <a href="/dashboard">&larr; Back to board</a>
+    <h2>Follow-up email for <%= application.role %> @ <%= application.company %></h2>
+    <textarea id="emailText" rows="14" style="width:100%; font-family: monospace; padding:12px;"><%= text %></textarea>
+    <button onclick="copyText()">📋 Copy to clipboard</button>
+    <p id="copied" style="display:none;color:green;">Copied!</p>
+  </main>
+  <script>
+    function copyText() {
+      const el = document.getElementById('emailText');
+      el.select();
+      document.execCommand('copy');
+      document.getElementById('copied').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

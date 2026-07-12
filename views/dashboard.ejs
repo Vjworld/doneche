@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <nav class="topnav">
+    <div class="brand">👻 GhostTracker AI</div>
+    <div class="nav-links">
+      <a href="/dashboard">Board</a>
+      <a href="/ats-matcher">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
+      <a href="/pricing">Pricing</a>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="link-btn">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="dashboard">
+    <div class="dashboard-header">
+      <h2>Hi, <%= user.name %> 👋</h2>
+      <p><%= appsCount %> application<%= appsCount === 1 ? '' : 's' %> tracked <% if (user.plan === 'free') { %>(<%= freeLimit %> free limit)<% } %></p>
+    </div>
+
+    <% if (atLimit) { %>
+      <div class="alert">You've hit your free limit of <%= freeLimit %> applications. <a href="/pricing">Upgrade</a> to track unlimited.</div>
+    <% } %>
+
+    <form method="POST" action="/applications" class="add-form">
+      <input type="text" name="company" placeholder="Company" required />
+      <input type="text" name="role" placeholder="Role" required />
+      <input type="date" name="appliedDate" required />
+      <button type="submit">+ Add Application</button>
+    </form>
+
+    <div class="board">
+      <% ['Applied','Interviewing','Ghosted','Rejected','Offered'].forEach(function(col) { %>
+        <div class="column column-<%= col.toLowerCase() %>">
+          <h3><%= col %> (<%= columns[col].length %>)</h3>
+          <% columns[col].forEach(function(a) { %>
+            <div class="card">
+              <div class="card-title"><%= a.role %></div>
+              <div class="card-sub"><%= a.company %></div>
+              <div class="card-date">Applied: <%= new Date(a.appliedDate).toLocaleDateString() %></div>
+              <% if (col === 'Ghosted') { %>
+                <a class="followup-link" href="/applications/<%= a.id %>/followup">✉️ Get follow-up email</a>
+              <% } %>
+              <form method="POST" action="/applications/<%= a.id %>/status" class="status-select">
+                <select name="status" onchange="this.form.submit()">
+                  <% ['Applied','Interviewing','Ghosted','Rejected','Offered'].forEach(function(s) { %>
+                    <option value="<%= s %>" <%= s === col ? 'selected' : '' %>><%= s %></option>
+                  <% }) %>
+                </select>
+              </form>
+              <form method="POST" action="/applications/<%= a.id %>/delete">
+                <button type="submit" class="delete-btn">Delete</button>
+              </form>
+            </div>
+          <% }) %>
+        </div>
+      <% }) %>
+    </div>
+  </main>
+</body>
+</html>
