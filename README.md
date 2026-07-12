@@ -1,6 +1,8 @@
-# GhostTracker AI — Phase 0 MVP
+# doneche — Phase 0 MVP
 
-Job application tracker that auto-flags when a company has gone silent for 7+ days ("Ghosted") and gives you a one-click follow-up email.
+*(formerly "GhostTracker AI" — folder name kept as `ghosttracker` for repo continuity)*
+
+Job application tracker for frustrated job seekers. Auto-flags when a company has gone silent for 7+ days ("Ghosted") and gives you a one-click follow-up email.
 
 ## Features (Phase 0 — free)
 - Email/password auth (bcrypt + sessions)
@@ -13,29 +15,44 @@ Job application tracker that auto-flags when a company has gone silent for 7+ da
 - Unlimited applications
 - ATS Keyword Matcher (paste JD + resume → top missing keywords)
 
+## Architecture
+- **App logic**: `app.js` — a single Express app used both locally and in production.
+- **Local dev**: `server.js` boots `app.js` with `app.listen()`, using a local `db.json` (lowdb) datastore — zero setup required.
+- **Production (Netlify)**: `netlify/functions/app.js` wraps the same `app.js` with `serverless-http`. When `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env vars are set, the app automatically switches from lowdb to Supabase (Postgres) for all reads/writes — see `schema.sql`.
+
 ## Run locally
 ```bash
 cd ghosttracker
 npm install
-cp .env.example .env    # edit SESSION_SECRET
+cp .env.example .env    # edit SESSION_SECRET; leave SUPABASE_* blank for local lowdb
 npm start
 ```
-App runs at http://localhost:3000. A local `db.json` file (gitignored) is used as the datastore via lowdb — fine for the first 6-20 users; migrate to Postgres/Mongo once traction is proven.
+App runs at http://localhost:3000.
 
-## Deploy (fastest options given your existing toolchain)
-Given your existing product URLs use **hercules.app**, **bolt.host**, **vercel**, and you already have a live domain pattern like `xyz.onhercules.app` / `xyz.ruvab.it.com` — pick ONE:
+## Deploy to Netlify + Supabase
+1. **Supabase**: create a project, open the SQL editor, paste and run `schema.sql`. Copy your Project URL and `service_role` key (Settings → API).
+2. **Netlify**: connect this GitHub repo (main branch). Netlify will read `netlify.toml` automatically:
+   - Publishes `public/` as static assets (CSS etc.)
+   - Routes all other requests to the bundled Express app via `netlify/functions/app.js`
+3. In Netlify → Site settings → Environment variables, set:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SESSION_SECRET`
+   - `ADSENSE_CLIENT_ID` (optional — see below)
+4. Trigger a deploy. Visit `/health` on the live URL to confirm `"datastore":"supabase"`.
 
-1. **Render.com / Railway** (recommended for this Express+session app): connect this repo, set `SESSION_SECRET` env var, deploy. Free tier works for MVP validation.
-2. **Vercel**: works but sessions/lowdb file writes don't persist well on serverless — only use if you swap lowdb for a hosted DB (e.g. Supabase/Mongo Atlas) first.
-3. **hercules.app / bolt.host** (your usual flow): push this codebase through your normal vibe-coding deploy pipeline, same as your other `onhercules.app` products.
+## Ghost detection (7-day rule)
+Primary check runs on every dashboard load (`flagGhostedApplications` in `app.js`). As a backup/scheduled safety net, `schema.sql` also includes a `flag_ghosted_applications()` Postgres function you can wire to Supabase's pg_cron or a Netlify scheduled function to run daily even if a user never opens the app.
 
-**Suggested subdomain**: `ghosttracker.<yourdomain>` or `ghosttracker.onhercules.app`, matching your existing naming convention.
+## Monetization / AdSense
+- Pricing page (`/pricing`) offers Free vs Pro (₹399/mo). `/upgrade` is currently a manual-flip placeholder — wire Razorpay/Stripe before scaling past your first ~10 paid users.
+- **Google AdSense**: exactly ONE verification method is wired — a `<meta name="google-adsense-account">` tag in `views/partials/head.ejs`, driven by the `ADSENSE_CLIENT_ID` env var. Do not add a second verification method (e.g. ads.txt or inline script tag) — that causes ownership conflicts in AdSense.
 
 ## Health check
-`GET /health` → `{status:"ok", uptime, timestamp}` — wire this into your `/money-ops` canary monitoring once deployed.
+`GET /health` → `{status, datastore, uptime, timestamp}` — wire into `/money-ops` canary monitoring once deployed.
 
 ## Next steps (per strategy doc `strategy-2026-07-12-ghosttracker-mvp.md`)
-1. Deploy to a public URL.
-2. Personally onboard your 6 named warm leads (Dinesh, Sanket, Sonal, Suyog, Amey, Sowjanya) — send link, ask them to add real applications.
+1. Deploy to Netlify + Supabase (above).
+2. Personally onboard your 6 named warm leads (Dinesh, Sanket, Sonal, Suyog, Amey, Sowjanya).
 3. After 3+ active users for a week, run `/money-quality` (pre-launch QA/security gate) before pushing harder on `/money-outreach` and `/money-social`.
-4. Wire real Stripe checkout in `/upgrade` route (currently a placeholder that just flips `plan` to `paid` — fine for manual/Sales-led first payments via UPI/Razorpay link, but automate before scaling past ~10 paid users).
+4. Wire real Razorpay/Stripe checkout in `/upgrade` once you have your first willing-to-pay conversation.

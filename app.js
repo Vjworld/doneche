@@ -1,0 +1,373 @@
+require('dotenv').config();
+const express = require('express');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+
+const GHOST_DAYS = 7; // days of silence before auto-flag
+
+// ---------- Data layer ----------
+// Uses Supabase (Postgres) when SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are set
+// (Netlify production), otherwise falls back to a local lowdb JSON file
+// (local development only — see server.js).
+let db;
+let useSupabase = false;
+
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  useSupabase = true;
+  const { createClient } = require('@supabase/supabase-js');
+  db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function daysSince(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function followUpTemplate(application) {
+  return `Subject: Following up on my application for ${application.role} at ${application.company}
+
+Hi there,
+
+I hope you're doing well. I wanted to follow up on my application for the ${application.role} position at ${application.company}, submitted on ${new Date(
+    application.appliedDate || application.applied_date
+  ).toLocaleDateString()}. I remain very interested in the opportunity and would love to hear about next steps whenever convenient.
+
+Please let me know if there's any additional information I can provide.
+
+Best regards,
+[Your Name]`;
+}
+
+const app = express();
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'doneche-dev-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 30 }
+  })
+);
+
+function requireAuth(req, res, next) {
+  if (!req.session.userId) return res.redirect('/login');
+  next();
+}
+
+// ---------- Repository functions (Supabase-backed) ----------
+async function findUserByEmail(email) {
+  if (!useSupabase) return req_local_findUserByEmail(email);
+  const { data } = await db.from('users').select('*').eq('email', email).maybeSingle();
+  return data;
+}
+async function findUserById(id) {
+  if (!useSupabase) return req_local_findUserById(id);
+  const { data } = await db.from('users').select('*').eq('id', id).maybeSingle();
+  return data;
+}
+async function createUser(user) {
+  if (!useSupabase) return req_local_createUser(user);
+  const { data } = await db
+    .from('users')
+    .insert({ name: user.name, email: user.email, password_hash: user.password, plan: 'free' })
+    .select()
+    .single();
+  return data;
+}
+async function setUserPlan(id, plan) {
+  if (!useSupabase) return req_local_setUserPlan(id, plan);
+  await db.from('users').update({ plan }).eq('id', id);
+}
+async function listApplications(userId) {
+  if (!useSupabase) return req_local_listApplications(userId);
+  const { data } = await db
+    .from('applications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('applied_date', { ascending: false });
+  return (data || []).map(normalizeAppRow);
+}
+async function createApplication(a) {
+  if (!useSupabase) return req_local_createApplication(a);
+  const { data } = await db
+    .from('applications')
+    .insert({
+      user_id: a.userId,
+      company: a.company,
+      role: a.role,
+      applied_date: a.appliedDate,
+      last_update: a.appliedDate,
+      status: 'Applied'
+    })
+    .select()
+    .single();
+  return normalizeAppRow(data);
+}
+async function updateApplicationStatus(id, userId, status) {
+  if (!useSupabase) return req_local_updateApplicationStatus(id, userId, status);
+  await db
+    .from('applications')
+    .update({ status, last_update: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', userId);
+}
+async function deleteApplication(id, userId) {
+  if (!useSupabase) return req_local_deleteApplication(id, userId);
+  await db.from('applications').delete().eq('id', id).eq('user_id', userId);
+}
+async function getApplication(id, userId) {
+  if (!useSupabase) return req_local_getApplication(id, userId);
+  const { data } = await db.from('applications').select('*').eq('id', id).eq('user_id', userId).maybeSingle();
+  return data ? normalizeAppRow(data) : null;
+}
+async function flagGhostedApplications(userId) {
+  if (!useSupabase) return req_local_flagGhostedApplications(userId);
+  const cutoff = new Date(Date.now() - GHOST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  await db
+    .from('applications')
+    .update({ status: 'Ghosted', ghosted_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .in('status', ['Applied', 'Interviewing'])
+    .lte('last_update', cutoff);
+}
+
+function normalizeAppRow(row) {
+  if (!row) return row;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    company: row.company,
+    role: row.role,
+    appliedDate: row.applied_date,
+    lastUpdate: row.last_update,
+    status: row.status
+  };
+}
+
+// ---------- Local dev fallback (lowdb) ----------
+let localDb;
+function ensureLocalDb() {
+  if (localDb) return localDb;
+  const low = require('lowdb');
+  const FileSync = require('lowdb/adapters/FileSync');
+  const adapter = new FileSync(path.join(__dirname, 'db.json'));
+  localDb = low(adapter);
+  localDb.defaults({ users: [], applications: [] }).write();
+  return localDb;
+}
+function req_local_findUserByEmail(email) {
+  return ensureLocalDb().get('users').find({ email }).value();
+}
+function req_local_findUserById(id) {
+  return ensureLocalDb().get('users').find({ id }).value();
+}
+function req_local_createUser(user) {
+  const record = {
+    id: uuidv4(),
+    name: user.name,
+    email: user.email,
+    password: user.password,
+    plan: 'free',
+    createdAt: new Date().toISOString()
+  };
+  ensureLocalDb().get('users').push(record).write();
+  return record;
+}
+function req_local_setUserPlan(id, plan) {
+  ensureLocalDb().get('users').find({ id }).assign({ plan }).write();
+}
+function req_local_listApplications(userId) {
+  return ensureLocalDb()
+    .get('applications')
+    .filter({ userId })
+    .orderBy(['appliedDate'], ['desc'])
+    .value();
+}
+function req_local_createApplication(a) {
+  const record = {
+    id: uuidv4(),
+    userId: a.userId,
+    company: a.company,
+    role: a.role,
+    appliedDate: a.appliedDate,
+    lastUpdate: a.appliedDate,
+    status: 'Applied',
+    createdAt: new Date().toISOString()
+  };
+  ensureLocalDb().get('applications').push(record).write();
+  return record;
+}
+function req_local_updateApplicationStatus(id, userId, status) {
+  ensureLocalDb()
+    .get('applications')
+    .find({ id, userId })
+    .assign({ status, lastUpdate: new Date().toISOString() })
+    .write();
+}
+function req_local_deleteApplication(id, userId) {
+  ensureLocalDb().get('applications').remove({ id, userId }).write();
+}
+function req_local_getApplication(id, userId) {
+  return ensureLocalDb().get('applications').find({ id, userId }).value();
+}
+function req_local_flagGhostedApplications(userId) {
+  const apps = ensureLocalDb().get('applications').filter({ userId }).value();
+  apps.forEach((a) => {
+    if ((a.status === 'Applied' || a.status === 'Interviewing') && daysSince(a.lastUpdate) >= GHOST_DAYS) {
+      ensureLocalDb()
+        .get('applications')
+        .find({ id: a.id })
+        .assign({ status: 'Ghosted', ghostedAt: new Date().toISOString() })
+        .write();
+    }
+  });
+}
+
+// ---------- Auth Routes ----------
+app.get('/', (req, res) => {
+  if (req.session.userId) return res.redirect('/dashboard');
+  res.redirect('/login');
+});
+
+app.get('/register', (req, res) => res.render('register', { error: null }));
+
+app.post('/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.render('register', { error: 'All fields are required.' });
+  }
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    return res.render('register', { error: 'Email already registered.' });
+  }
+  const hash = await bcrypt.hash(password, 10);
+  const user = await createUser({ name, email, password: hash });
+  req.session.userId = user.id;
+  res.redirect('/dashboard');
+});
+
+app.get('/login', (req, res) => res.render('login', { error: null }));
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await findUserByEmail(email);
+  if (!user) return res.render('login', { error: 'Invalid credentials.' });
+  const hash = user.password || user.password_hash;
+  const match = await bcrypt.compare(password, hash);
+  if (!match) return res.render('login', { error: 'Invalid credentials.' });
+  req.session.userId = user.id;
+  res.redirect('/dashboard');
+});
+
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
+});
+
+// ---------- Dashboard / Kanban ----------
+app.get('/dashboard', requireAuth, async (req, res) => {
+  await flagGhostedApplications(req.session.userId);
+  const user = await findUserById(req.session.userId);
+  const apps = await listApplications(req.session.userId);
+
+  const columns = {
+    Applied: apps.filter((a) => a.status === 'Applied'),
+    Interviewing: apps.filter((a) => a.status === 'Interviewing'),
+    Ghosted: apps.filter((a) => a.status === 'Ghosted'),
+    Rejected: apps.filter((a) => a.status === 'Rejected'),
+    Offered: apps.filter((a) => a.status === 'Offered')
+  };
+
+  const freeLimit = 10;
+  const atLimit = user.plan === 'free' && apps.length >= freeLimit;
+
+  res.render('dashboard', { user, columns, atLimit, freeLimit, appsCount: apps.length });
+});
+
+app.post('/applications', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  const apps = await listApplications(user.id);
+  if (user.plan === 'free' && apps.length >= 10) {
+    return res.status(403).redirect('/dashboard?limit=1');
+  }
+  const { company, role, appliedDate } = req.body;
+  await createApplication({
+    userId: user.id,
+    company,
+    role,
+    appliedDate: appliedDate || new Date().toISOString()
+  });
+  res.redirect('/dashboard');
+});
+
+app.post('/applications/:id/status', requireAuth, async (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ['Applied', 'Interviewing', 'Ghosted', 'Rejected', 'Offered'];
+  if (!validStatuses.includes(status)) return res.redirect('/dashboard');
+  await updateApplicationStatus(req.params.id, req.session.userId, status);
+  res.redirect('/dashboard');
+});
+
+app.post('/applications/:id/delete', requireAuth, async (req, res) => {
+  await deleteApplication(req.params.id, req.session.userId);
+  res.redirect('/dashboard');
+});
+
+// Follow-up email generator (free feature, part of Ghost Alert hook)
+app.get('/applications/:id/followup', requireAuth, async (req, res) => {
+  const application = await getApplication(req.params.id, req.session.userId);
+  if (!application) return res.redirect('/dashboard');
+  res.render('followup', { application, text: followUpTemplate(application) });
+});
+
+// ---------- Phase 1 (paywalled): ATS Matcher ----------
+app.get('/ats-matcher', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  res.render('ats-matcher', { user, result: null });
+});
+
+app.post('/ats-matcher', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  if (user.plan !== 'paid') {
+    return res.redirect('/pricing?upgrade=ats');
+  }
+  const { jobDescription, resume } = req.body;
+  const jdWords = new Set(
+    jobDescription.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4)
+  );
+  const resumeWords = new Set(
+    resume.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4)
+  );
+  const gaps = [...jdWords].filter((w) => !resumeWords.has(w)).slice(0, 3);
+  res.render('ats-matcher', { user, result: gaps });
+});
+
+// ---------- Pricing / Upgrade ----------
+app.get('/pricing', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  res.render('pricing', { user, upgrade: req.query.upgrade });
+});
+
+app.post('/upgrade', requireAuth, async (req, res) => {
+  // Placeholder upgrade path. Wire real Razorpay/Stripe checkout here.
+  await setUserPlan(req.session.userId, 'paid');
+  res.redirect('/dashboard');
+});
+
+// ---------- Health check (for canary monitoring) ----------
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    datastore: useSupabase ? 'supabase' : 'local-lowdb',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+module.exports = app;

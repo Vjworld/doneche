@@ -1,21 +1,22 @@
 {
-  "name": "ghosttracker",
-  "version": "0.1.0",
+  "name": "doneche",
+  "version": "0.2.0",
   "private": true,
-  "description": "GhostTracker AI - Job application ghosting tracker (Phase 0 MVP)",
+  "description": "doneche - Job application ghosting tracker for frustrated job seekers (Phase 0 MVP)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "lowdb": "^1.0.0",
-    "stripe": "^15.12.0",
+    "serverless-http": "^3.2.0",
     "uuid": "^9.0.1"
   }
 }

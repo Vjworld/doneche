@@ -1,0 +1,42 @@
+# Netlify configuration for "doneche"
+# Deploys static assets from /public and routes all dynamic app
+# requests through a single serverless function (Express app wrapped
+# with serverless-http), backed by Supabase Postgres.
+
+[build]
+  base = "."
+  publish = "public"
+  functions = "netlify/functions"
+  command = "npm install"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js"]
+
+# Route every non-static request to the Express app function.
+# Static files in /public (css, images, robots.txt, sitemap.xml) are
+# served directly by Netlify's CDN and never hit the function.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/app/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/app/:splat"
+  status = 200
+  force = false
+  conditions = { Role = ["*"] }
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Environment variables required (set in Netlify UI → Site settings → Environment variables):
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY   (server-side only, never exposed to client)
+#   SESSION_SECRET
+#   ADSENSE_CLIENT_ID           (optional, e.g. ca-pub-XXXXXXXXXXXXXXXX — used once, see views/partials/head.ejs)
