@@ -73,7 +73,25 @@ create policy "Users can view own row" on users
 create policy "Applications belong to owner" on applications
   for all using (auth.uid()::text = user_id::text);
 
+-- ============ FEEDBACK ============
+-- Beta tester bug reports / feature requests / general feedback
+create table if not exists feedback (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references users (id) on delete set null,
+  feedback_type text not null check (feedback_type in ('Bug', 'Feature Request', 'General')),
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_feedback_user_id on feedback (user_id);
+
+alter table feedback enable row level security;
+
+create policy "Users can view own feedback" on feedback
+  for select using (auth.uid()::text = user_id::text);
+
 -- ============ OPTIONAL: server-side ghost-flagging function ============
+
 -- Can be called on a schedule (Supabase cron / pg_cron) or from a Netlify
 -- scheduled function as a backup to the on-request check in the app.
 create or replace function flag_ghosted_applications()

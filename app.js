@@ -194,7 +194,8 @@ function ensureLocalDb() {
   const FileSync = require('lowdb/adapters/FileSync');
   const adapter = new FileSync(path.join(__dirname, 'db.json'));
   localDb = low(adapter);
-  localDb.defaults({ users: [], applications: [] }).write();
+  localDb.defaults({ users: [], applications: [], feedback: [] }).write();
+
   return localDb;
 }
 function req_local_findUserByEmail(email) {
@@ -434,7 +435,36 @@ app.post('/upgrade', requireAuth, async (req, res) => {
   res.redirect('/dashboard');
 });
 
+// ---------- Feedback / Bug reports ----------
+app.post('/feedback', requireAuth, async (req, res) => {
+  const { feedbackType, message } = req.body;
+  const validTypes = ['Bug', 'Feature Request', 'General'];
+  if (!validTypes.includes(feedbackType) || !message || !message.trim()) {
+    return res.redirect('/dashboard?feedback=error');
+  }
+  if (useSupabase) {
+    await db.from('feedback').insert({
+      user_id: req.session.userId,
+      feedback_type: feedbackType,
+      message: message.trim()
+    });
+  } else {
+    ensureLocalDb()
+      .get('feedback')
+      .push({
+        id: uuidv4(),
+        userId: req.session.userId,
+        feedbackType,
+        message: message.trim(),
+        createdAt: new Date().toISOString()
+      })
+      .write();
+  }
+  res.redirect('/dashboard?feedback=success');
+});
+
 // ---------- Health check (for canary monitoring) ----------
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',

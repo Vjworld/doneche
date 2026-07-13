@@ -24,6 +24,16 @@
       <div class="alert">You've hit your free limit of <%= freeLimit %> applications. <a href="/pricing">Upgrade</a> to track unlimited.</div>
     <% } %>
 
+    <!-- Beta Perk: AI Interviewer -->
+    <div class="beta-perk">
+      <div class="beta-perk-badge">🎁 Premium Beta Perk Unlocked</div>
+      <p class="beta-perk-desc">Practice your interview pitch directly with our AI Simulator.</p>
+      <button type="button" class="beta-perk-btn" onclick="window.open('https://aistudio.instagram.com/ai/4265674450327484/?utm_source=share', '_blank')">
+        🚀 Launch AI Interviewer
+      </button>
+    </div>
+
+
     <form method="POST" action="/applications" class="add-form">
       <input type="text" name="company" placeholder="Company" required />
       <input type="text" name="role" placeholder="Role" required />
@@ -70,9 +80,62 @@
         </div>
       <% }) %>
     </div>
+
+    <!-- Coming Soon carousel -->
+    <div class="coming-soon">
+      <h3>🔮 Coming Soon</h3>
+      <div class="carousel">
+        <input type="radio" name="carousel-slide" id="slide1" checked>
+        <input type="radio" name="carousel-slide" id="slide2">
+        <div class="carousel-track">
+          <div class="carousel-slide">
+            <div class="carousel-card">
+              <div class="carousel-icon">🔗</div>
+              <h4>LinkedIn Insider Match</h4>
+              <p>Instantly identify key connections at your applied companies.</p>
+            </div>
+          </div>
+          <div class="carousel-slide">
+            <div class="carousel-card">
+              <div class="carousel-icon">🎯</div>
+              <h4>ATS Keyword Matcher</h4>
+              <p>Scan your resume against the JD to beat the HR bots.</p>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-dots">
+          <label for="slide1"></label>
+          <label for="slide2"></label>
+        </div>
+      </div>
+    </div>
   </main>
 
+  <!-- Feedback / Bug report floating button -->
+  <button type="button" class="feedback-fab" onclick="openFeedbackModal()">💬 Feedback</button>
+
+  <div id="feedbackModal" class="modal-overlay" onclick="closeFeedbackModalOnOverlay(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeFeedbackModal()">&times;</button>
+      <h3>Report Bug / Feedback</h3>
+      <form method="POST" action="/feedback">
+        <label>Feedback Type</label>
+        <select name="feedbackType" required>
+          <option value="Bug">Bug</option>
+          <option value="Feature Request">Feature Request</option>
+          <option value="General">General</option>
+        </select>
+
+        <label>Message</label>
+        <textarea name="message" rows="5" placeholder="Tell us what's up..." required></textarea>
+
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Card detail modal -->
+
   <div id="cardModal" class="modal-overlay" onclick="closeCardModalOnOverlay(event)">
     <div class="modal-box">
       <button class="modal-close" onclick="closeCardModal()">&times;</button>
@@ -126,6 +189,16 @@
     function closeCardModalOnOverlay(evt) {
       if (evt.target.id === 'cardModal') closeCardModal();
     }
+    function openFeedbackModal() {
+      document.getElementById('feedbackModal').classList.add('open');
+    }
+    function closeFeedbackModal() {
+      document.getElementById('feedbackModal').classList.remove('open');
+    }
+    function closeFeedbackModalOnOverlay(evt) {
+      if (evt.target.id === 'feedbackModal') closeFeedbackModal();
+    }
   </script>
+
 </body>
 </html>
