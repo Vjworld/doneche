@@ -11,7 +11,9 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js"]
+  external_node_modules = ["@supabase/supabase-js", "ejs", "bcryptjs", "express", "express-session"]
+  included_files = ["views/**"]
+
 
 # Route every non-static request to the Express app function.
 # Static files in /public (css, images, robots.txt, sitemap.xml) are
