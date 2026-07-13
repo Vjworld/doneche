@@ -4,6 +4,8 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const nodemailer = require('nodemailer');
+
 
 const GHOST_DAYS = 7; // days of silence before auto-flag
 
@@ -24,6 +26,38 @@ function daysSince(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
+
+// ---------- Email notifications (Nodemailer / Gmail) ----------
+const FEEDBACK_ALERT_EMAIL = 'vaibhavseluk@gmail.com';
+
+const mailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD
+  }
+});
+
+async function sendFeedbackAlertEmail({ userIdentifier, feedbackType, message }) {
+  try {
+    await mailTransporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: FEEDBACK_ALERT_EMAIL,
+      subject: `🚨 New Doneche Feedback: ${feedbackType}`,
+      text: `A new feedback submission has been received on Doneche.
+
+User ID/Email: ${userIdentifier}
+Feedback Type: ${feedbackType}
+
+Message:
+${message}
+`
+    });
+  } catch (err) {
+    console.error('Failed to send feedback alert email:', err);
+  }
+}
+
 
 function followUpTemplate(application) {
   const greeting = application.hrContact ? `Hi ${application.hrContact.split(' ')[0]},` : 'Hi there,';
@@ -471,8 +505,19 @@ app.post('/feedback', requireAuth, async (req, res) => {
       })
       .write();
   }
+
+  // Fire-and-forget email alert; failures must never break the feedback flow.
+  const user = await findUserById(req.session.userId);
+  const userIdentifier = (user && (user.email || user.name)) || req.session.userId;
+  await sendFeedbackAlertEmail({
+    userIdentifier,
+    feedbackType,
+    message: message.trim()
+  });
+
   res.redirect('/dashboard?feedback=success');
 });
+
 
 // ---------- Health check (for canary monitoring) ----------
 
