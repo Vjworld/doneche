@@ -43,10 +43,17 @@ Best regards,
 const app = express();
 
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// In the bundled Netlify function, included_files preserve their path
+// relative to the project base directory (LAMBDA_TASK_ROOT), NOT relative
+// to this file's location inside netlify/functions. Resolve accordingly.
+const viewsDir = process.env.LAMBDA_TASK_ROOT
+  ? path.join(process.env.LAMBDA_TASK_ROOT, 'views')
+  : path.join(__dirname, 'views');
+app.set('views', viewsDir);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'doneche-dev-secret',
