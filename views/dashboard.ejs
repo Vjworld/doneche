@@ -28,6 +28,15 @@
       <input type="text" name="company" placeholder="Company" required />
       <input type="text" name="role" placeholder="Role" required />
       <input type="date" name="appliedDate" required />
+      <input type="text" name="location" placeholder="Location (optional)" />
+      <input type="text" name="ctcLpa" placeholder="CTC (LPA, optional)" />
+      <select name="jobType">
+        <option value="">Job Type (optional)</option>
+        <option value="WFO">WFO</option>
+        <option value="Remote">Remote</option>
+        <option value="Hybrid">Hybrid</option>
+      </select>
+      <input type="text" name="hrContact" placeholder="HR Contact Name (optional)" />
       <button type="submit">+ Add Application</button>
     </form>
 
@@ -36,21 +45,24 @@
         <div class="column column-<%= col.toLowerCase() %>">
           <h3><%= col %> (<%= columns[col].length %>)</h3>
           <% columns[col].forEach(function(a) { %>
-            <div class="card">
+            <div class="card" data-id="<%= a.id %>" onclick="openCardModal(event, '<%= a.id %>')">
               <div class="card-title"><%= a.role %></div>
               <div class="card-sub"><%= a.company %></div>
               <div class="card-date">Applied: <%= new Date(a.appliedDate).toLocaleDateString() %></div>
+              <% if (a.location) { %><div class="card-meta">📍 <%= a.location %></div><% } %>
+              <% if (a.ctcLpa) { %><div class="card-meta">💰 <%= a.ctcLpa %> LPA</div><% } %>
+              <% if (a.jobType) { %><div class="card-meta">🏢 <%= a.jobType %></div><% } %>
               <% if (col === 'Ghosted') { %>
-                <a class="followup-link" href="/applications/<%= a.id %>/followup">✉️ Get follow-up email</a>
+                <a class="followup-link" href="/applications/<%= a.id %>/followup" onclick="event.stopPropagation()">✉️ Get follow-up email</a>
               <% } %>
-              <form method="POST" action="/applications/<%= a.id %>/status" class="status-select">
+              <form method="POST" action="/applications/<%= a.id %>/status" class="status-select" onclick="event.stopPropagation()">
                 <select name="status" onchange="this.form.submit()">
                   <% ['Applied','Interviewing','Ghosted','Rejected','Offered'].forEach(function(s) { %>
                     <option value="<%= s %>" <%= s === col ? 'selected' : '' %>><%= s %></option>
                   <% }) %>
                 </select>
               </form>
-              <form method="POST" action="/applications/<%= a.id %>/delete">
+              <form method="POST" action="/applications/<%= a.id %>/delete" onclick="event.stopPropagation()">
                 <button type="submit" class="delete-btn">Delete</button>
               </form>
             </div>
@@ -59,5 +71,61 @@
       <% }) %>
     </div>
   </main>
+
+  <!-- Card detail modal -->
+  <div id="cardModal" class="modal-overlay" onclick="closeCardModalOnOverlay(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeCardModal()">&times;</button>
+      <h3 id="modalTitle">Application details</h3>
+      <form id="modalForm" method="POST">
+        <label>Location</label>
+        <input type="text" name="location" id="modalLocation" placeholder="e.g., Pune, Nagpur" />
+
+        <label>CTC (LPA)</label>
+        <input type="text" name="ctcLpa" id="modalCtc" placeholder="e.g., 12-15" />
+
+        <label>Job Type</label>
+        <select name="jobType" id="modalJobType">
+          <option value="">Select</option>
+          <option value="WFO">WFO</option>
+          <option value="Remote">Remote</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+
+        <label>HR Contact Name</label>
+        <input type="text" name="hrContact" id="modalHrContact" placeholder="e.g., Pavithra" />
+
+        <label>Notes / Remarks</label>
+        <textarea name="notes" id="modalNotes" rows="4" placeholder="Any remarks..."></textarea>
+
+        <button type="submit">Save details</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    async function openCardModal(evt, id) {
+      if (evt.target.closest('form') || evt.target.tagName === 'A' || evt.target.tagName === 'BUTTON' || evt.target.tagName === 'SELECT') {
+        return; // don't open modal when interacting with inner controls
+      }
+      const res = await fetch('/applications/' + id);
+      if (!res.ok) return;
+      const app = await res.json();
+      document.getElementById('modalTitle').textContent = app.role + ' @ ' + app.company;
+      document.getElementById('modalLocation').value = app.location || '';
+      document.getElementById('modalCtc').value = app.ctcLpa || '';
+      document.getElementById('modalJobType').value = app.jobType || '';
+      document.getElementById('modalHrContact').value = app.hrContact || '';
+      document.getElementById('modalNotes').value = app.notes || '';
+      document.getElementById('modalForm').action = '/applications/' + id + '/details';
+      document.getElementById('cardModal').classList.add('open');
+    }
+    function closeCardModal() {
+      document.getElementById('cardModal').classList.remove('open');
+    }
+    function closeCardModalOnOverlay(evt) {
+      if (evt.target.id === 'cardModal') closeCardModal();
+    }
+  </script>
 </body>
 </html>

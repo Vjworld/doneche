@@ -30,8 +30,15 @@ create table if not exists applications (
   status text not null default 'Applied'
     check (status in ('Applied', 'Interviewing', 'Ghosted', 'Rejected', 'Offered')),
   ghosted_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Optional metadata fields shown in the card detail modal
+  location text,
+  ctc_lpa text,
+  job_type text check (job_type in ('WFO', 'Remote', 'Hybrid') or job_type is null),
+  hr_contact text,
+  notes text
 );
+
 
 create index if not exists idx_applications_user_id on applications (user_id);
 create index if not exists idx_applications_status on applications (status);

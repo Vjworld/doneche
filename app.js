@@ -26,9 +26,11 @@ function daysSince(dateStr) {
 }
 
 function followUpTemplate(application) {
+  const greeting = application.hrContact ? `Hi ${application.hrContact.split(' ')[0]},` : 'Hi there,';
   return `Subject: Following up on my application for ${application.role} at ${application.company}
 
-Hi there,
+${greeting}
+
 
 I hope you're doing well. I wanted to follow up on my application for the ${application.role} position at ${application.company}, submitted on ${new Date(
     application.appliedDate || application.applied_date
@@ -111,12 +113,32 @@ async function createApplication(a) {
       role: a.role,
       applied_date: a.appliedDate,
       last_update: a.appliedDate,
-      status: 'Applied'
+      status: 'Applied',
+      location: a.location || null,
+      ctc_lpa: a.ctcLpa || null,
+      job_type: a.jobType || null,
+      hr_contact: a.hrContact || null,
+      notes: a.notes || null
     })
     .select()
     .single();
   return normalizeAppRow(data);
 }
+async function updateApplicationDetails(id, userId, details) {
+  if (!useSupabase) return req_local_updateApplicationDetails(id, userId, details);
+  await db
+    .from('applications')
+    .update({
+      location: details.location || null,
+      ctc_lpa: details.ctcLpa || null,
+      job_type: details.jobType || null,
+      hr_contact: details.hrContact || null,
+      notes: details.notes || null
+    })
+    .eq('id', id)
+    .eq('user_id', userId);
+}
+
 async function updateApplicationStatus(id, userId, status) {
   if (!useSupabase) return req_local_updateApplicationStatus(id, userId, status);
   await db
@@ -154,9 +176,15 @@ function normalizeAppRow(row) {
     role: row.role,
     appliedDate: row.applied_date,
     lastUpdate: row.last_update,
-    status: row.status
+    status: row.status,
+    location: row.location || '',
+    ctcLpa: row.ctc_lpa || '',
+    jobType: row.job_type || '',
+    hrContact: row.hr_contact || '',
+    notes: row.notes || ''
   };
 }
+
 
 // ---------- Local dev fallback (lowdb) ----------
 let localDb;
@@ -206,11 +234,30 @@ function req_local_createApplication(a) {
     appliedDate: a.appliedDate,
     lastUpdate: a.appliedDate,
     status: 'Applied',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    location: a.location || '',
+    ctcLpa: a.ctcLpa || '',
+    jobType: a.jobType || '',
+    hrContact: a.hrContact || '',
+    notes: a.notes || ''
   };
   ensureLocalDb().get('applications').push(record).write();
   return record;
 }
+function req_local_updateApplicationDetails(id, userId, details) {
+  ensureLocalDb()
+    .get('applications')
+    .find({ id, userId })
+    .assign({
+      location: details.location || '',
+      ctcLpa: details.ctcLpa || '',
+      jobType: details.jobType || '',
+      hrContact: details.hrContact || '',
+      notes: details.notes || ''
+    })
+    .write();
+}
+
 function req_local_updateApplicationStatus(id, userId, status) {
   ensureLocalDb()
     .get('applications')
@@ -303,15 +350,35 @@ app.post('/applications', requireAuth, async (req, res) => {
   if (user.plan === 'free' && apps.length >= 10) {
     return res.status(403).redirect('/dashboard?limit=1');
   }
-  const { company, role, appliedDate } = req.body;
+  const { company, role, appliedDate, location, ctcLpa, jobType, hrContact, notes } = req.body;
   await createApplication({
     userId: user.id,
     company,
     role,
-    appliedDate: appliedDate || new Date().toISOString()
+    appliedDate: appliedDate || new Date().toISOString(),
+    location,
+    ctcLpa,
+    jobType,
+    hrContact,
+    notes
   });
   res.redirect('/dashboard');
 });
+
+// Fetch a single application's details as JSON (used by the card detail modal)
+app.get('/applications/:id', requireAuth, async (req, res) => {
+  const application = await getApplication(req.params.id, req.session.userId);
+  if (!application) return res.status(404).json({ error: 'Not found' });
+  res.json(application);
+});
+
+// Update optional metadata fields (location, CTC, job type, HR contact, notes)
+app.post('/applications/:id/details', requireAuth, async (req, res) => {
+  const { location, ctcLpa, jobType, hrContact, notes } = req.body;
+  await updateApplicationDetails(req.params.id, req.session.userId, { location, ctcLpa, jobType, hrContact, notes });
+  res.redirect('/dashboard');
+});
+
 
 app.post('/applications/:id/status', requireAuth, async (req, res) => {
   const { status } = req.body;
