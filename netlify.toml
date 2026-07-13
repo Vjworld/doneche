@@ -23,10 +23,8 @@
 
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/app/:splat"
+  to = "/.netlify/functions/app"
   status = 200
-  force = false
-  conditions = { Role = ["*"] }
 
 [[headers]]
   for = "/*"
