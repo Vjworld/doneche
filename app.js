@@ -118,6 +118,7 @@ async function createApplication(a) {
       ctc_lpa: a.ctcLpa || null,
       job_type: a.jobType || null,
       hr_contact: a.hrContact || null,
+      hr_email: a.hrEmail || null,
       notes: a.notes || null
     })
     .select()
@@ -133,11 +134,13 @@ async function updateApplicationDetails(id, userId, details) {
       ctc_lpa: details.ctcLpa || null,
       job_type: details.jobType || null,
       hr_contact: details.hrContact || null,
+      hr_email: details.hrEmail || null,
       notes: details.notes || null
     })
     .eq('id', id)
     .eq('user_id', userId);
 }
+
 
 async function updateApplicationStatus(id, userId, status) {
   if (!useSupabase) return req_local_updateApplicationStatus(id, userId, status);
@@ -181,9 +184,11 @@ function normalizeAppRow(row) {
     ctcLpa: row.ctc_lpa || '',
     jobType: row.job_type || '',
     hrContact: row.hr_contact || '',
+    hrEmail: row.hr_email || '',
     notes: row.notes || ''
   };
 }
+
 
 
 // ---------- Local dev fallback (lowdb) ----------
@@ -240,6 +245,7 @@ function req_local_createApplication(a) {
     ctcLpa: a.ctcLpa || '',
     jobType: a.jobType || '',
     hrContact: a.hrContact || '',
+    hrEmail: a.hrEmail || '',
     notes: a.notes || ''
   };
   ensureLocalDb().get('applications').push(record).write();
@@ -254,10 +260,12 @@ function req_local_updateApplicationDetails(id, userId, details) {
       ctcLpa: details.ctcLpa || '',
       jobType: details.jobType || '',
       hrContact: details.hrContact || '',
+      hrEmail: details.hrEmail || '',
       notes: details.notes || ''
     })
     .write();
 }
+
 
 function req_local_updateApplicationStatus(id, userId, status) {
   ensureLocalDb()
@@ -351,7 +359,7 @@ app.post('/applications', requireAuth, async (req, res) => {
   if (user.plan === 'free' && apps.length >= 10) {
     return res.status(403).redirect('/dashboard?limit=1');
   }
-  const { company, role, appliedDate, location, ctcLpa, jobType, hrContact, notes } = req.body;
+  const { company, role, appliedDate, location, ctcLpa, jobType, hrContact, hrEmail, notes } = req.body;
   await createApplication({
     userId: user.id,
     company,
@@ -361,10 +369,12 @@ app.post('/applications', requireAuth, async (req, res) => {
     ctcLpa,
     jobType,
     hrContact,
+    hrEmail,
     notes
   });
   res.redirect('/dashboard');
 });
+
 
 // Fetch a single application's details as JSON (used by the card detail modal)
 app.get('/applications/:id', requireAuth, async (req, res) => {
@@ -375,10 +385,11 @@ app.get('/applications/:id', requireAuth, async (req, res) => {
 
 // Update optional metadata fields (location, CTC, job type, HR contact, notes)
 app.post('/applications/:id/details', requireAuth, async (req, res) => {
-  const { location, ctcLpa, jobType, hrContact, notes } = req.body;
-  await updateApplicationDetails(req.params.id, req.session.userId, { location, ctcLpa, jobType, hrContact, notes });
+  const { location, ctcLpa, jobType, hrContact, hrEmail, notes } = req.body;
+  await updateApplicationDetails(req.params.id, req.session.userId, { location, ctcLpa, jobType, hrContact, hrEmail, notes });
   res.redirect('/dashboard');
 });
+
 
 
 app.post('/applications/:id/status', requireAuth, async (req, res) => {

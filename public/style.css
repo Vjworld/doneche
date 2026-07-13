@@ -187,6 +187,17 @@ button:hover { background: #4747b8; }
 .card-date { color: #999; font-size: 0.75em; margin: 4px 0; }
 .card-meta { color: #666; font-size: 0.8em; margin: 2px 0; }
 .followup-link { display: block; margin: 6px 0; font-size: 0.85em; }
+.send-email-btn {
+  display: block;
+  width: 100%;
+  background: #22a55e;
+  margin: 4px 0 8px;
+  font-weight: 600;
+  font-size: 0.85em;
+  padding: 8px 10px;
+}
+.send-email-btn:hover { background: #178a49; }
+
 .status-select select { width: 100%; margin: 6px 0; }
 .delete-btn { background: #e74c3c; width: 100%; margin-top: 4px; }
 .delete-btn:hover { background: #c0392b; }

@@ -36,8 +36,10 @@ create table if not exists applications (
   ctc_lpa text,
   job_type text check (job_type in ('WFO', 'Remote', 'Hybrid') or job_type is null),
   hr_contact text,
+  hr_email text,
   notes text
 );
+
 
 
 create index if not exists idx_applications_user_id on applications (user_id);

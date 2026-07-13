@@ -34,7 +34,8 @@
     </div>
 
 
-    <form method="POST" action="/applications" class="add-form">
+    <form method="POST" action="/applications" class="add-form" id="addAppForm">
+
       <input type="text" name="company" placeholder="Company" required />
       <input type="text" name="role" placeholder="Role" required />
       <input type="date" name="appliedDate" required />
@@ -47,15 +48,18 @@
         <option value="Hybrid">Hybrid</option>
       </select>
       <input type="text" name="hrContact" placeholder="HR Contact Name (optional)" />
-      <button type="submit">+ Add Application</button>
+      <input type="email" name="hrEmail" placeholder="HR Email (optional)" />
+      <button type="submit" id="addAppBtn">+ Add Application</button>
     </form>
+
 
     <div class="board">
       <% ['Applied','Interviewing','Ghosted','Rejected','Offered'].forEach(function(col) { %>
-        <div class="column column-<%= col.toLowerCase() %>">
+        <div class="column column-<%= col.toLowerCase() %>" <%= col === 'Ghosted' ? 'id="ghostedColumn"' : '' %>>
+
           <h3><%= col %> (<%= columns[col].length %>)</h3>
           <% columns[col].forEach(function(a) { %>
-            <div class="card" data-id="<%= a.id %>" onclick="openCardModal(event, '<%= a.id %>')">
+            <div class="card<%= col === 'Ghosted' ? ' ghosted-column-card' : '' %>" data-id="<%= a.id %>" onclick="openCardModal(event, '<%= a.id %>')">
               <div class="card-title"><%= a.role %></div>
               <div class="card-sub"><%= a.company %></div>
               <div class="card-date">Applied: <%= new Date(a.appliedDate).toLocaleDateString() %></div>
@@ -63,8 +67,18 @@
               <% if (a.ctcLpa) { %><div class="card-meta">💰 <%= a.ctcLpa %> LPA</div><% } %>
               <% if (a.jobType) { %><div class="card-meta">🏢 <%= a.jobType %></div><% } %>
               <% if (col === 'Ghosted') { %>
-                <a class="followup-link" href="/applications/<%= a.id %>/followup" onclick="event.stopPropagation()">✉️ Get follow-up email</a>
+                <a class="followup-link" href="/applications/<%= a.id %>/followup" onclick="event.stopPropagation()">📋 Copy follow-up email</a>
+                <% if (a.hrEmail) { %>
+                  <button type="button" class="send-email-btn"
+                    data-role="<%= a.role %>"
+                    data-company="<%= a.company %>"
+                    data-hr-email="<%= a.hrEmail %>"
+                    data-hr-contact="<%= a.hrContact || '' %>"
+                    data-applied-date="<%= a.appliedDate %>"
+                    onclick="event.stopPropagation(); sendFollowUpEmail(this)">✉️ Send Email Now</button>
+                <% } %>
               <% } %>
+
               <form method="POST" action="/applications/<%= a.id %>/status" class="status-select" onclick="event.stopPropagation()">
                 <select name="status" onchange="this.form.submit()">
                   <% ['Applied','Interviewing','Ghosted','Rejected','Offered'].forEach(function(s) { %>
@@ -112,7 +126,8 @@
   </main>
 
   <!-- Feedback / Bug report floating button -->
-  <button type="button" class="feedback-fab" onclick="openFeedbackModal()">💬 Feedback</button>
+  <button type="button" id="feedbackFab" class="feedback-fab" onclick="openFeedbackModal()">💬 Feedback</button>
+
 
   <div id="feedbackModal" class="modal-overlay" onclick="closeFeedbackModalOnOverlay(event)">
     <div class="modal-box">
@@ -158,7 +173,11 @@
         <label>HR Contact Name</label>
         <input type="text" name="hrContact" id="modalHrContact" placeholder="e.g., Pavithra" />
 
+        <label>HR Email</label>
+        <input type="email" name="hrEmail" id="modalHrEmail" placeholder="e.g., hr@company.com" />
+
         <label>Notes / Remarks</label>
+
         <textarea name="notes" id="modalNotes" rows="4" placeholder="Any remarks..."></textarea>
 
         <button type="submit">Save details</button>
@@ -179,7 +198,9 @@
       document.getElementById('modalCtc').value = app.ctcLpa || '';
       document.getElementById('modalJobType').value = app.jobType || '';
       document.getElementById('modalHrContact').value = app.hrContact || '';
+      document.getElementById('modalHrEmail').value = app.hrEmail || '';
       document.getElementById('modalNotes').value = app.notes || '';
+
       document.getElementById('modalForm').action = '/applications/' + id + '/details';
       document.getElementById('cardModal').classList.add('open');
     }
@@ -198,7 +219,67 @@
     function closeFeedbackModalOnOverlay(evt) {
       if (evt.target.id === 'feedbackModal') closeFeedbackModal();
     }
+
+    // ---------- 1-Click Follow-Up Email (mailto:) ----------
+    function sendFollowUpEmail(btn) {
+      const role = btn.dataset.role;
+      const company = btn.dataset.company;
+      const hrEmail = btn.dataset.hrEmail;
+      const hrContact = btn.dataset.hrContact;
+      const appliedDate = btn.dataset.appliedDate ? new Date(btn.dataset.appliedDate).toLocaleDateString() : '';
+
+      const subject = `Following up on my application for ${role} at ${company}`;
+      const greeting = hrContact ? `Hi ${hrContact.split(' ')[0]},` : 'Hi there,';
+      const body = `${greeting}\n\nI hope you're doing well. I wanted to follow up on my application for the ${role} position at ${company}, submitted on ${appliedDate}. I remain very interested in the opportunity and would love to hear about next steps whenever convenient.\n\nPlease let me know if there's any additional information I can provide.\n\nBest regards,\n[Your Name]`;
+
+      const mailtoLink = `mailto:${encodeURIComponent(hrEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+    }
+
+    // ---------- First-Time App Tour (driver.js) ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      if (localStorage.getItem('tour_completed')) return;
+      if (typeof driver === 'undefined') return;
+
+      const driverObj = driver.js.driver({
+        showProgress: true,
+        onDestroyStarted: () => {
+          localStorage.setItem('tour_completed', '1');
+          driverObj.destroy();
+        },
+        steps: [
+          {
+            element: '#addAppBtn',
+            popover: {
+              title: '📝 Add your applications',
+              description: 'Start by logging every job application you send out here.',
+              side: 'bottom'
+            }
+          },
+          {
+            element: '#ghostedColumn',
+            popover: {
+              title: '👻 The Ghosted column',
+              description: 'If a company goes silent for 7+ days after Applied or Interviewing, we auto-flag the card here so you never lose track.',
+              side: 'left'
+            }
+          },
+          {
+            element: '#feedbackFab',
+            popover: {
+              title: '💬 We want your feedback',
+              description: 'Found a bug or have an idea? Tell us here — we read every single one.',
+              side: 'top'
+            }
+          }
+        ]
+      });
+
+      driverObj.drive();
+    });
   </script>
 
 </body>
 </html>
+
+
