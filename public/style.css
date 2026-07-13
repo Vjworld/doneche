@@ -8,12 +8,81 @@ body {
 a { color: #5b5bd6; text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+.split-page {
+  min-height: 100vh;
+  display: flex;
+}
+.marketing-col {
+  flex: 1.1;
+  background: linear-gradient(135deg, #5b5bd6, #8a4fff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 50px;
+}
+.marketing-inner { max-width: 480px; }
+.marketing-brand { font-weight: 700; font-size: 1.4em; margin-bottom: 24px; opacity: 0.9; }
+.marketing-headline {
+  font-size: 2.1em;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 32px;
+}
+
+/* ---------- FAB text rotator (pure CSS) ---------- */
+.fab-rotator {
+  height: 2.6em;
+  overflow: hidden;
+  position: relative;
+  font-size: 1.15em;
+  font-weight: 600;
+}
+.fab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+.fab-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fabCycle 18s infinite;
+  color: #f0eaff;
+}
+.fab-item:nth-child(1) { animation-delay: 0s; }
+.fab-item:nth-child(2) { animation-delay: 3s; }
+.fab-item:nth-child(3) { animation-delay: 6s; }
+.fab-item:nth-child(4) { animation-delay: 9s; }
+.fab-item:nth-child(5) { animation-delay: 12s; }
+.fab-item:nth-child(6) { animation-delay: 15s; }
+
+@keyframes fabCycle {
+  0%   { opacity: 0; transform: translateY(12px); }
+  4%   { opacity: 1; transform: translateY(0); }
+  13%  { opacity: 1; transform: translateY(0); }
+  17%  { opacity: 0; transform: translateY(-12px); }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
+@media (max-width: 900px) {
+  .split-page { flex-direction: column; }
+  .marketing-col { padding: 40px 24px; }
+  .marketing-headline { font-size: 1.6em; }
+}
+
 .auth-page {
+  flex: 1;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .auth-card {
   background: #fff;
   padding: 40px;
