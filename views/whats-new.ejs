@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'whats-new' }) %>
+  <main class="simple-page legal-page">
+    <a href="<%= user ? '/dashboard' : '/login' %>" class="breadcrumb-back">&larr; Back</a>
+    <h2>What's New</h2>
+
+    <div class="whats-new-entry">
+      <div class="whats-new-date">Latest</div>
+      <h3>Magic Upload <span class="new-tag">NEW</span></h3>
+      <ul>
+        <li>Upload a screenshot of your application confirmation and auto-fill Company &amp; Role.</li>
+        <li>Upload a PDF of your sent application email and auto-fill Company &amp; Role.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>Inbound Email Auto-Tracking <span class="new-tag">NEW</span></h3>
+      <ul>
+        <li>Forward your application confirmation emails and we'll automatically add them to your board.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>Account &amp; Security <span class="new-tag">NEW</span></h3>
+      <ul>
+        <li>Terms &amp; Conditions and Privacy Policy pages added, linked from Sign-Up.</li>
+        <li>Improved navigation with a shared top nav and breadcrumb back-links across the app.</li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

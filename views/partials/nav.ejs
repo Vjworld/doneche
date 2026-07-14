@@ -5,6 +5,7 @@
       <a href="/dashboard" class="<%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">Board</a>
       <a href="/ats-matcher" class="<%= typeof activePage !== 'undefined' && activePage === 'ats-matcher' ? 'active' : '' %>">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
       <a href="/pricing" class="<%= typeof activePage !== 'undefined' && activePage === 'pricing' ? 'active' : '' %>">Pricing</a>
+      <a href="/whats-new" class="<%= typeof activePage !== 'undefined' && activePage === 'whats-new' ? 'active' : '' %>">What's New</a>
       <form method="POST" action="/logout" style="display:inline">
         <button type="submit" class="link-btn">Logout</button>
       </form>

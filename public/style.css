@@ -357,5 +357,58 @@ button:hover { background: #4747b8; }
 .legal-page h3 { margin-top: 24px; }
 .legal-page p, .legal-page li { color: #444; line-height: 1.6; }
 
+/* ---------- Magic Upload: dropdown + info tooltip ---------- */
+.upload-dropdown { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.upload-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  z-index: 50;
+  min-width: 220px;
+  padding: 6px;
+}
+.upload-menu.open { display: block; }
+.upload-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: #1e1e2e;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+.upload-menu button:hover { background: #f0f0ff; }
+.info-icon { position: relative; cursor: pointer; font-size: 1.1em; user-select: none; }
+.info-tip {
+  display: none;
+  position: absolute;
+  top: 130%;
+  left: 0;
+  width: 280px;
+  background: #1e1e2e;
+  color: #fff;
+  font-size: 0.8em;
+  line-height: 1.5;
+  padding: 12px 14px;
+  border-radius: 8px;
+  z-index: 60;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+.info-tip.open { display: block; }
+
+/* ---------- What's New page ---------- */
+.whats-new-entry { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; }
+.whats-new-entry:last-child { border-bottom: none; }
+.whats-new-date { color: #888; font-size: 0.85em; margin-bottom: 4px; }
+.whats-new-entry h3 { margin: 4px 0 8px; }
+.whats-new-entry ul { margin: 0; padding-left: 20px; color: #444; line-height: 1.6; }
+.new-tag { background: #22a55e; color: #fff; font-size: 0.65em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+
 
 

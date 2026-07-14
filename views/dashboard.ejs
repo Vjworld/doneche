@@ -41,9 +41,23 @@
       <input type="text" name="hrContact" placeholder="HR Contact Name (optional)" />
       <input type="email" name="hrEmail" placeholder="HR Email (optional)" />
 
-      <button type="button" id="uploadScreenshotBtn" onclick="document.getElementById('screenshotFileInput').click()">📸 Upload Screenshot</button>
+      <div class="upload-dropdown" id="uploadDropdown">
+        <button type="button" id="uploadScreenshotBtn" onclick="toggleUploadMenu(event)">📎 Magic Upload ▾</button>
+        <span class="info-icon" tabindex="0" onclick="event.stopPropagation(); toggleInfoTip()" title="How to upload">ℹ️
+          <div class="info-tip" id="uploadInfoTip">
+            <strong>Screenshot:</strong> Take a screenshot of your application confirmation (email/portal) and upload it directly.<br/><br/>
+            <strong>PDF (Sent Email):</strong> Open the confirmation email you sent to the HR/company, choose "Print &rarr; Save as PDF" (or download it if received), then upload that PDF file here. We'll auto-extract the Company &amp; Role for you to review.
+          </div>
+        </span>
+        <div class="upload-menu" id="uploadMenu">
+          <button type="button" onclick="document.getElementById('screenshotFileInput').click()">🖼️ Upload Screenshot</button>
+          <button type="button" onclick="document.getElementById('pdfFileInput').click()">📄 Upload PDF (Sent Email)</button>
+        </div>
+      </div>
       <input type="file" id="screenshotFileInput" accept="image/*" style="display:none" onchange="handleScreenshotUpload(event)" />
+      <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handlePdfUpload(event)" />
       <span id="screenshotStatus" class="screenshot-status"></span>
+
 
       <button type="submit" id="addAppBtn">+ Add Application</button>
     </form>
@@ -217,8 +231,63 @@
       if (evt.target.id === 'feedbackModal') closeFeedbackModal();
     }
 
+    // ---------- Magic Upload: dropdown menu + info tooltip ----------
+    function toggleUploadMenu(evt) {
+      evt.stopPropagation();
+      document.getElementById('uploadMenu').classList.toggle('open');
+      document.getElementById('uploadInfoTip').classList.remove('open');
+    }
+    function toggleInfoTip() {
+      document.getElementById('uploadInfoTip').classList.toggle('open');
+      document.getElementById('uploadMenu').classList.remove('open');
+    }
+    document.addEventListener('click', function (evt) {
+      if (!evt.target.closest('#uploadDropdown')) {
+        document.getElementById('uploadMenu').classList.remove('open');
+        document.getElementById('uploadInfoTip').classList.remove('open');
+      }
+    });
+
+    // ---------- Magic Upload: PDF Parsing (sent email) ----------
+    function handlePdfUpload(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      document.getElementById('uploadMenu').classList.remove('open');
+      const statusEl = document.getElementById('screenshotStatus');
+      statusEl.textContent = 'Analyzing PDF...';
+      statusEl.style.color = '#888';
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          const base64Pdf = reader.result; // data URL
+          const res = await fetch('/api/parse-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdf: base64Pdf })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to parse PDF.');
+
+          if (data.company) document.getElementById('companyInput').value = data.company;
+          if (data.role) document.getElementById('roleInput').value = data.role;
+
+          statusEl.textContent = '✅ Auto-filled from PDF! Please review before saving.';
+          statusEl.style.color = '#2ecc71';
+        } catch (err) {
+          statusEl.textContent = '❌ ' + (err.message || 'Could not parse PDF.');
+          statusEl.style.color = '#c0392b';
+        } finally {
+          evt.target.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
     // ---------- Magic Upload: Screenshot Parsing ----------
     function handleScreenshotUpload(evt) {
+      document.getElementById('uploadMenu').classList.remove('open');
+
       const file = evt.target.files && evt.target.files[0];
       if (!file) return;
       const statusEl = document.getElementById('screenshotStatus');

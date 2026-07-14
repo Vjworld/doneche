@@ -60,7 +60,8 @@ async function parseScreenshotWithClaude(base64Image, mediaType) {
   return extractJsonFromClaudeText(text);
 }
 
-async function parseEmailWithClaude(emailText) {
+async function parseTextWithClaude(emailText) {
+
   if (!anthropicClient) throw new Error('Anthropic client not configured (ANTHROPIC_API_KEY missing).');
   const response = await anthropicClient.messages.create({
     model: CLAUDE_MODEL,
@@ -615,6 +616,13 @@ app.get('/privacy', async (req, res) => {
   res.render('privacy', { user });
 });
 
+// ---------- What's New ----------
+app.get('/whats-new', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('whats-new', { user });
+});
+
+
 // ---------- Magic Upload: Screenshot Parsing (Claude) ----------
 
 app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
@@ -638,7 +646,36 @@ app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
   }
 });
 
+// ---------- Magic Upload: PDF Parsing (Claude) ----------
+app.post('/api/parse-pdf', requireAuth, async (req, res) => {
+  try {
+    const { pdf } = req.body; // base64-encoded PDF (data URL or raw base64)
+    if (!pdf) return res.status(400).json({ error: 'Missing PDF data.' });
+
+    const base64Data = pdf.includes(',') ? pdf.split(',')[1] : pdf;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const pdfParse = require('pdf-parse');
+    const pdfData = await pdfParse(buffer);
+    const extractedText = (pdfData.text || '').trim();
+
+    if (!extractedText) {
+      return res.status(422).json({ error: 'Could not extract any text from the PDF.' });
+    }
+
+    const parsed = await parseTextWithClaude(extractedText);
+    if (!parsed) {
+      return res.status(422).json({ error: 'Could not extract company/role from the PDF content.' });
+    }
+    res.json({ company: parsed.company || '', role: parsed.role || '' });
+  } catch (err) {
+    console.error('parse-pdf error:', err);
+    res.status(500).json({ error: err.message || 'Failed to parse PDF.' });
+  }
+});
+
 // ---------- Core Loop Fallback: Inbound Email Webhook ----------
+
 app.post('/api/inbound-email', async (req, res) => {
   try {
     const { subject, text, from } = req.body;
@@ -655,10 +692,11 @@ app.post('/api/inbound-email', async (req, res) => {
       return res.status(404).json({ error: 'No matching user found for sender email.' });
     }
 
-    const parsed = await parseEmailWithClaude(text);
+    const parsed = await parseTextWithClaude(text);
     if (!parsed || !parsed.company || !parsed.role) {
       return res.status(422).json({ error: 'Could not extract company/role from the email body.' });
     }
+
 
     await createApplication({
       userId: user.id,
