@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /applications
+Disallow: /api/
+
+Sitemap: https://doneche.ruvab.it.com/sitemap.xml
