@@ -39,4 +39,7 @@
 #   SUPABASE_URL
 #   SUPABASE_SERVICE_ROLE_KEY   (server-side only, never exposed to client)
 #   SESSION_SECRET
+#   APP_BASE_URL                (production URL, no trailing slash — e.g. https://doneche.shabdly.online — used to build referral invite links)
 #   ADSENSE_CLIENT_ID           (optional, e.g. ca-pub-XXXXXXXXXXXXXXXX — used once, see views/partials/head.ejs)
+
+

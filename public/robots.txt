@@ -4,4 +4,4 @@ Disallow: /dashboard
 Disallow: /applications
 Disallow: /api/
 
-Sitemap: https://doneche.ruvab.it.com/sitemap.xml
+Sitemap: https://doneche.shabdly.online/sitemap.xml

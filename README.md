@@ -53,7 +53,9 @@ App runs at http://localhost:3000.
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SESSION_SECRET`
+   - `APP_BASE_URL` — production URL, no trailing slash (**https://doneche.shabdly.online**) — used to build referral invite links
    - `ADSENSE_CLIENT_ID` (optional — see below)
+
 4. Trigger a deploy. Visit `/health` on the live URL to confirm `"datastore":"supabase"`.
 
 ## Ghost detection (7-day rule)
