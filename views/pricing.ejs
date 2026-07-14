@@ -2,16 +2,11 @@
 <html lang="en">
 <head><%- include('partials/head') %></head>
 <body>
-  <nav class="topnav">
-    <div class="brand">👻 doneche</div>
-    <div class="nav-links">
-      <a href="/dashboard">Board</a>
-      <a href="/ats-matcher">ATS Matcher</a>
-      <a href="/pricing">Pricing</a>
-    </div>
-  </nav>
+  <%- include('partials/nav', { user, activePage: 'pricing' }) %>
   <main class="simple-page">
+    <a href="/dashboard" class="breadcrumb-back">&larr; Back to Board</a>
     <h2>Pricing</h2>
+
     <% if (upgrade) { %>
       <div class="alert">Upgrade to Pro to unlock that feature.</div>
     <% } %>

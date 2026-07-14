@@ -2,8 +2,10 @@
 <html lang="en">
 <head><%- include('partials/head') %></head>
 <body>
+  <%- include('partials/nav', { user: (typeof user !== 'undefined' ? user : null), activePage: 'dashboard' }) %>
   <main class="simple-page">
-    <a href="/dashboard">&larr; Back to board</a>
+    <a href="/dashboard" class="breadcrumb-back">&larr; Back to board</a>
+
     <h2>Follow-up email for <%= application.role %> @ <%= application.company %></h2>
     <textarea id="emailText" rows="14" style="width:100%; font-family: monospace; padding:12px;"><%= text %></textarea>
     <button onclick="copyText()">📋 Copy to clipboard</button>

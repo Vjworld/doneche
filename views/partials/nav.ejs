@@ -1,0 +1,16 @@
+<nav class="topnav">
+  <div class="brand"><a href="<%= typeof user !== 'undefined' && user ? '/dashboard' : '/' %>" style="color:inherit;text-decoration:none;">👻 doneche</a></div>
+  <div class="nav-links">
+    <% if (typeof user !== 'undefined' && user) { %>
+      <a href="/dashboard" class="<%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">Board</a>
+      <a href="/ats-matcher" class="<%= typeof activePage !== 'undefined' && activePage === 'ats-matcher' ? 'active' : '' %>">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
+      <a href="/pricing" class="<%= typeof activePage !== 'undefined' && activePage === 'pricing' ? 'active' : '' %>">Pricing</a>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="link-btn">Logout</button>
+      </form>
+    <% } else { %>
+      <a href="/login" class="<%= typeof activePage !== 'undefined' && activePage === 'login' ? 'active' : '' %>">Log In</a>
+      <a href="/register" class="<%= typeof activePage !== 'undefined' && activePage === 'register' ? 'active' : '' %>">Sign Up</a>
+    <% } %>
+  </div>
+</nav>

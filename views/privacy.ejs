@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'privacy' }) %>
+  <main class="simple-page legal-page">
+    <a href="javascript:history.back()" class="breadcrumb-back">&larr; Back</a>
+
+    <h2>Privacy Policy</h2>
+    <p><em>Effective Date: July 14, 2026</em></p>
+
+    <p>At doneche, operated by Ruvab IT, we respect your privacy and are committed to protecting the personal data you share with us. This Privacy Policy outlines how we collect, use, process, and safeguard your information.</p>
+
+    <h3>1. Information We Collect</h3>
+    <p><strong>Account Information:</strong> When you sign up, we collect your email address and authentication details managed securely via Supabase.</p>
+    <p><strong>Job Application Data:</strong> We store the information you input regarding your job hunt, including company names, job roles, interview dates, target compensation, and contact emails.</p>
+    <p><strong>Uploaded Images (Magic Upload):</strong> When you utilize the screenshot parsing feature, we temporarily process the image file you provide.</p>
+    <p><strong>Inbound Emails:</strong> If you use the inbound email forwarding fallback feature, our processing systems parse the plain text content of the forwarded confirmation email.</p>
+
+    <h3>2. How We Process and Use Your Data</h3>
+    <p><strong>Core Functionality:</strong> To display your tracking dashboard, compute 7-day ghosting intervals, and format email draft templates.</p>
+    <p><strong>AI Processing (Anthropic Claude API):</strong> When you upload a screenshot or forward an application email, the raw text or image is securely processed via the Anthropic (Claude) API solely to extract the company and role. This third-party processing is ephemeral, meaning your uploaded images/texts are not used to train global AI models.</p>
+    <p><strong>No Inbox Scraping:</strong> We explicitly do not log into, read, or continuously monitor your private personal email inboxes. All tracking relies strictly on data you manually enter, paste, upload, or explicitly forward.</p>
+
+    <h3>3. Data Sharing and Third Parties</h3>
+    <p>We do not sell, trade, or rent your personal information to third parties. We share data only with trusted infrastructure providers necessary to host and run our app:</p>
+    <ul>
+      <li><strong>Supabase:</strong> For database storage and secure user authentication.</li>
+      <li><strong>Netlify:</strong> For hosting our application backend and frontend architecture.</li>
+      <li><strong>Anthropic:</strong> For processing screenshots and email parsing via API calls.</li>
+    </ul>
+
+    <h3>4. Data Retention and Security</h3>
+    <p>We use industry-standard security practices to protect your data from unauthorized access. Your job tracking data is stored until you choose to delete your account. You can request account deletion at any time through the application interface.</p>
+
+    <h3>5. Children's Privacy</h3>
+    <p>Our services are not intended for or directed to individuals under the age of 18.</p>
+
+    <h3>6. Contact Us</h3>
+    <p>For any questions regarding this Privacy Policy or your data, you can contact us at support@ruvab.it.com.</p>
+  </main>
+</body>
+</html>

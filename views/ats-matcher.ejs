@@ -2,16 +2,11 @@
 <html lang="en">
 <head><%- include('partials/head') %></head>
 <body>
-  <nav class="topnav">
-    <div class="brand">👻 doneche</div>
-    <div class="nav-links">
-      <a href="/dashboard">Board</a>
-      <a href="/ats-matcher">ATS Matcher</a>
-      <a href="/pricing">Pricing</a>
-    </div>
-  </nav>
+  <%- include('partials/nav', { user, activePage: 'ats-matcher' }) %>
   <main class="simple-page">
+    <a href="/dashboard" class="breadcrumb-back">&larr; Back to Board</a>
     <h2>ATS Keyword Matcher <span class="badge">PRO</span></h2>
+
     <% if (user.plan !== 'paid') { %>
       <div class="alert">This is a Pro feature. <a href="/pricing">Upgrade for ₹399/mo</a> to unlock unlimited ATS matches.</div>
     <% } %>

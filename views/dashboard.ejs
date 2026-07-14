@@ -2,17 +2,8 @@
 <html lang="en">
 <head><%- include('partials/head') %></head>
 <body>
-  <nav class="topnav">
-    <div class="brand">👻 doneche</div>
-    <div class="nav-links">
-      <a href="/dashboard">Board</a>
-      <a href="/ats-matcher">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
-      <a href="/pricing">Pricing</a>
-      <form method="POST" action="/logout" style="display:inline">
-        <button type="submit" class="link-btn">Logout</button>
-      </form>
-    </div>
-  </nav>
+  <%- include('partials/nav', { user, activePage: 'dashboard' }) %>
+
 
   <main class="dashboard">
     <div class="dashboard-header">

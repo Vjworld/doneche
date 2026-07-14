@@ -351,4 +351,11 @@ button:hover { background: #4747b8; }
 .screenshot-status { font-size: 0.85rem; margin-left: 8px; }
 #uploadScreenshotBtn { background: #6c5ce7; color: #fff; }
 
+/* ---------- Navigation: active link + breadcrumbs ---------- */
+.nav-links a.active { color: #1e1e2e; font-weight: 700; border-bottom: 2px solid #5b5bd6; }
+.breadcrumb-back { display: inline-block; margin-bottom: 16px; font-size: 0.9em; color: #5b5bd6; }
+.legal-page h3 { margin-top: 24px; }
+.legal-page p, .legal-page li { color: #444; line-height: 1.6; }
+
+
 

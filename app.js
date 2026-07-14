@@ -526,8 +526,10 @@ app.post('/applications/:id/delete', requireAuth, async (req, res) => {
 app.get('/applications/:id/followup', requireAuth, async (req, res) => {
   const application = await getApplication(req.params.id, req.session.userId);
   if (!application) return res.redirect('/dashboard');
-  res.render('followup', { application, text: followUpTemplate(application) });
+  const user = await findUserById(req.session.userId);
+  res.render('followup', { application, text: followUpTemplate(application), user });
 });
+
 
 // ---------- Phase 1 (paywalled): ATS Matcher ----------
 app.get('/ats-matcher', requireAuth, async (req, res) => {
@@ -602,7 +604,19 @@ app.post('/feedback', requireAuth, async (req, res) => {
 });
 
 
+// ---------- Legal pages (Terms & Privacy) ----------
+app.get('/terms', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('terms', { user });
+});
+
+app.get('/privacy', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('privacy', { user });
+});
+
 // ---------- Magic Upload: Screenshot Parsing (Claude) ----------
+
 app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
   try {
     const { image, mediaType } = req.body;
