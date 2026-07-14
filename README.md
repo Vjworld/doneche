@@ -15,6 +15,21 @@ Job application tracker for frustrated job seekers. Auto-flags when a company ha
 - Unlimited applications
 - ATS Keyword Matcher (paste JD + resume → top missing keywords)
 
+## Features — Growth & UX (latest)
+- **Referral / Gamification system**: unique invite link per user; 1 referral unlocks the AI Interview Simulator, 3 referrals unlock VIP AI Resume Matcher access, 5 referrals earns the "Ghostbuster" badge. Each referral also grants +5 application storage slots (Capacity Expansion widget).
+- **Share App button**: always-visible floating button on the dashboard for quick access to your invite link.
+- **Referral toast + confetti**: celebratory notification when a friend joins using your link.
+- **Magic Upload**: upload a screenshot or PDF of your application confirmation to auto-fill Company/Role/etc. via Claude AI.
+- **Inbound email auto-tracking**: forward application confirmation emails to auto-add them to your board.
+- **Shared UI helpers** (`public/ui.js`): global toast notifications, button loading-spinners, and a safety net that surfaces any JS/network error as a toast instead of failing silently.
+- **Mobile-friendly**: responsive nav hamburger menu, swipeable Kanban board, stacked forms, and 44px+ touch targets.
+- **Account & Security**: Terms & Conditions / Privacy Policy pages, password reset, shared top nav with active-link highlighting and breadcrumb back-links.
+- **First-time onboarding tour** (driver.js) highlighting key features for new users.
+- **More visible ghost 👻 micro-animation** across the app (nav, login, register).
+
+*Whenever a new feature/enhancement ships, update `views/whats-new.ejs` (public-facing changelog) alongside this README.*
+
+
 ## Architecture
 - **App logic**: `app.js` — a single Express app used both locally and in production.
 - **Local dev**: `server.js` boots `app.js` with `app.listen()`, using a local `db.json` (lowdb) datastore — zero setup required.
