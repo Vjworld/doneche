@@ -36,8 +36,8 @@
 
     <form method="POST" action="/applications" class="add-form" id="addAppForm">
 
-      <input type="text" name="company" placeholder="Company" required />
-      <input type="text" name="role" placeholder="Role" required />
+      <input type="text" name="company" id="companyInput" placeholder="Company" required />
+      <input type="text" name="role" id="roleInput" placeholder="Role" required />
       <input type="date" name="appliedDate" required />
       <input type="text" name="location" placeholder="Location (optional)" />
       <input type="text" name="ctcLpa" placeholder="CTC (LPA, optional)" />
@@ -49,8 +49,14 @@
       </select>
       <input type="text" name="hrContact" placeholder="HR Contact Name (optional)" />
       <input type="email" name="hrEmail" placeholder="HR Email (optional)" />
+
+      <button type="button" id="uploadScreenshotBtn" onclick="document.getElementById('screenshotFileInput').click()">📸 Upload Screenshot</button>
+      <input type="file" id="screenshotFileInput" accept="image/*" style="display:none" onchange="handleScreenshotUpload(event)" />
+      <span id="screenshotStatus" class="screenshot-status"></span>
+
       <button type="submit" id="addAppBtn">+ Add Application</button>
     </form>
+
 
 
     <div class="board">
@@ -220,7 +226,43 @@
       if (evt.target.id === 'feedbackModal') closeFeedbackModal();
     }
 
+    // ---------- Magic Upload: Screenshot Parsing ----------
+    function handleScreenshotUpload(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('screenshotStatus');
+      statusEl.textContent = 'Analyzing screenshot...';
+      statusEl.style.color = '#888';
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          const base64Image = reader.result; // data URL
+          const res = await fetch('/api/parse-screenshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image, mediaType: file.type })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to parse screenshot.');
+
+          if (data.company) document.getElementById('companyInput').value = data.company;
+          if (data.role) document.getElementById('roleInput').value = data.role;
+
+          statusEl.textContent = '✅ Auto-filled! Please review before saving.';
+          statusEl.style.color = '#2ecc71';
+        } catch (err) {
+          statusEl.textContent = '❌ ' + (err.message || 'Could not parse screenshot.');
+          statusEl.style.color = '#c0392b';
+        } finally {
+          evt.target.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
     // ---------- 1-Click Follow-Up Email (mailto:) ----------
+
     function sendFollowUpEmail(btn) {
       const role = btn.dataset.role;
       const company = btn.dataset.company;

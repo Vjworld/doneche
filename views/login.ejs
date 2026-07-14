@@ -16,9 +16,52 @@
           <input type="password" name="password" required />
           <button type="submit">Log In</button>
         </form>
+        <p><a href="#" id="forgotPasswordLink" onclick="handleForgotPassword(event)">Forgot Password?</a></p>
+        <p id="resetFeedback" class="reset-feedback"></p>
         <p>No account? <a href="/register">Sign up free</a></p>
       </div>
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = '<%= typeof supabaseUrl !== "undefined" ? supabaseUrl : "" %>';
+    const SUPABASE_ANON_KEY = '<%= typeof supabaseAnonKey !== "undefined" ? supabaseAnonKey : "" %>';
+    let supabaseClient = null;
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    async function handleForgotPassword(evt) {
+      evt.preventDefault();
+      const feedbackEl = document.getElementById('resetFeedback');
+      const email = window.prompt('Enter your account email to receive a password reset link:');
+      if (!email) return;
+
+      if (!supabaseClient) {
+        feedbackEl.textContent = 'Password reset is not configured. Please contact support.';
+        feedbackEl.style.color = '#c0392b';
+        return;
+      }
+
+      try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/login'
+        });
+        if (error) throw error;
+        feedbackEl.textContent = 'Password reset email sent! Check your inbox.';
+        feedbackEl.style.color = '#2ecc71';
+      } catch (err) {
+        feedbackEl.textContent = 'Could not send reset email: ' + (err.message || 'Unknown error');
+        feedbackEl.style.color = '#c0392b';
+      }
+    }
+  </script>
 </body>
 </html>
+</result>
+
+Now let's update the register view to fix the password reset link display and finalize both files together in one go.
+</environment_details>
+
+
