@@ -29,13 +29,23 @@ function extractJsonFromClaudeText(text) {
   }
 }
 
+// Mandatory Kanban card fields we try to auto-fill via Magic Upload: company, role, appliedDate.
+// Optional metadata fields (location, ctcLpa, jobType, hrContact, hrEmail) are also extracted
+// opportunistically when present in the source document.
+const MAGIC_UPLOAD_SYSTEM_INSTRUCTIONS =
+  'Extract structured job application details. Return ONLY a valid JSON object (no markdown fences) with these exact keys: ' +
+  'company (string), role (string), appliedDate (string, ISO format YYYY-MM-DD — infer from any visible date in the document; ' +
+  'if no date is visible, use today\'s date), location (string or empty string), ctcLpa (string or empty string), ' +
+  'jobType (one of "WFO", "Remote", "Hybrid", or empty string), hrContact (string or empty string), hrEmail (string or empty string). ' +
+  'Always include all keys even if empty.';
+
 async function parseScreenshotWithClaude(base64Image, mediaType) {
   if (!anthropicClient) throw new Error('Anthropic client not configured (ANTHROPIC_API_KEY missing).');
   const response = await anthropicClient.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 300,
+    max_tokens: 400,
     system:
-      'Analyze this job application confirmation screenshot. Extract the Job Title and Company Name. Return ONLY a valid JSON object with the keys company and role. Do not include markdown formatting.',
+      'Analyze this job application confirmation screenshot. ' + MAGIC_UPLOAD_SYSTEM_INSTRUCTIONS,
     messages: [
       {
         role: 'user',
@@ -50,7 +60,7 @@ async function parseScreenshotWithClaude(base64Image, mediaType) {
           },
           {
             type: 'text',
-            text: 'Extract the company and role from this screenshot.'
+            text: 'Extract the required job application fields from this screenshot.'
           }
         ]
       }
@@ -65,9 +75,9 @@ async function parseTextWithClaude(emailText) {
   if (!anthropicClient) throw new Error('Anthropic client not configured (ANTHROPIC_API_KEY missing).');
   const response = await anthropicClient.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 300,
+    max_tokens: 400,
     system:
-      "Extract the Job Title and Company Name from this job application confirmation email. Return ONLY a valid JSON object with keys company and role.",
+      'Analyze this job application confirmation email. ' + MAGIC_UPLOAD_SYSTEM_INSTRUCTIONS,
     messages: [
       {
         role: 'user',
@@ -78,6 +88,7 @@ async function parseTextWithClaude(emailText) {
   const text = response.content && response.content[0] && response.content[0].text;
   return extractJsonFromClaudeText(text);
 }
+
 
 const GHOST_DAYS = 7; // days of silence before auto-flag
 
@@ -192,7 +203,13 @@ async function createUser(user) {
   if (!useSupabase) return req_local_createUser(user);
   const { data } = await db
     .from('users')
-    .insert({ name: user.name, email: user.email, password_hash: user.password, plan: 'free' })
+    .insert({
+      name: user.name,
+      email: user.email,
+      password_hash: user.password,
+      plan: 'free',
+      referred_by: user.referredBy || null
+    })
     .select()
     .single();
   return data;
@@ -201,6 +218,72 @@ async function setUserPlan(id, plan) {
   if (!useSupabase) return req_local_setUserPlan(id, plan);
   await db.from('users').update({ plan }).eq('id', id);
 }
+
+// ---------- Referral / Gamification helpers ----------
+async function incrementReferralCount(referrerId, newUserName) {
+  if (!referrerId) return;
+  if (!useSupabase) return req_local_incrementReferralCount(referrerId, newUserName);
+  const referrer = await findUserById(referrerId);
+  if (!referrer) return;
+  const newCount = (referrer.referral_count || 0) + 1;
+  const { error } = await db
+    .from('users')
+    .update({
+      referral_count: newCount,
+      pending_referral_toast: true,
+      last_referral_name: newUserName || 'A friend'
+    })
+    .eq('id', referrerId);
+  if (error) {
+    // Surface referral-column errors loudly instead of failing silently —
+    // most commonly caused by migrations/004_add_referrals.sql not having
+    // been run against the Supabase database yet (missing referral_count /
+    // pending_referral_toast / last_referral_name columns).
+    console.error('incrementReferralCount failed (check that migrations/004_add_referrals.sql has been applied to Supabase):', error);
+  }
+}
+
+
+function referralTier(count) {
+  if (count >= 5) return { title: 'Ghostbuster', badge: '🏆' };
+  if (count >= 1) return { title: 'Networker', badge: '🥈' };
+  return { title: 'Job Hunter', badge: '🔰' };
+}
+
+// Feature unlock thresholds
+const REFERRALS_FOR_AI_SIMULATOR = 1;
+const REFERRALS_FOR_RESUME_MATCHER = 3;
+const REFERRALS_FOR_GHOSTBUSTER = 5;
+const BASE_APPLICATION_CAPACITY = 20;
+const SLOTS_PER_REFERRAL = 5;
+
+function getReferralGamificationState(user) {
+  const count = user.referral_count || 0;
+  const tier = referralTier(count);
+  return {
+    referralCount: count,
+    tier,
+    aiSimulatorUnlocked: count >= REFERRALS_FOR_AI_SIMULATOR,
+    resumeMatcherUnlocked: count >= REFERRALS_FOR_RESUME_MATCHER,
+    referralsToNextUnlock:
+      count < REFERRALS_FOR_AI_SIMULATOR
+        ? REFERRALS_FOR_AI_SIMULATOR - count
+        : count < REFERRALS_FOR_RESUME_MATCHER
+        ? REFERRALS_FOR_RESUME_MATCHER - count
+        : 0,
+    capacity: BASE_APPLICATION_CAPACITY + count * SLOTS_PER_REFERRAL,
+    referralLink: `${process.env.APP_BASE_URL || ''}/register?ref=${user.id}`
+  };
+}
+
+async function consumePendingReferralToast(userId) {
+  if (!useSupabase) return req_local_consumePendingReferralToast(userId);
+  const user = await findUserById(userId);
+  if (!user || !user.pending_referral_toast) return null;
+  await db.from('users').update({ pending_referral_toast: false }).eq('id', userId);
+  return user.last_referral_name || 'A friend';
+}
+
 async function listApplications(userId) {
   if (!useSupabase) return req_local_listApplications(userId);
   const { data } = await db
@@ -331,6 +414,27 @@ function req_local_createUser(user) {
 function req_local_setUserPlan(id, plan) {
   ensureLocalDb().get('users').find({ id }).assign({ plan }).write();
 }
+function req_local_incrementReferralCount(referrerId, newUserName) {
+  const referrer = ensureLocalDb().get('users').find({ id: referrerId }).value();
+  if (!referrer) return;
+  const newCount = (referrer.referral_count || 0) + 1;
+  ensureLocalDb()
+    .get('users')
+    .find({ id: referrerId })
+    .assign({
+      referral_count: newCount,
+      pending_referral_toast: true,
+      last_referral_name: newUserName || 'A friend'
+    })
+    .write();
+}
+function req_local_consumePendingReferralToast(userId) {
+  const user = ensureLocalDb().get('users').find({ id: userId }).value();
+  if (!user || !user.pending_referral_toast) return null;
+  ensureLocalDb().get('users').find({ id: userId }).assign({ pending_referral_toast: false }).write();
+  return user.last_referral_name || 'A friend';
+}
+
 function req_local_listApplications(userId) {
   return ensureLocalDb()
     .get('applications')
@@ -406,26 +510,38 @@ app.get('/', (req, res) => {
   res.redirect('/login');
 });
 
-app.get('/register', (req, res) => res.render('register', { error: null }));
+app.get('/register', (req, res) => res.render('register', { error: null, ref: req.query.ref || '' }));
 
 app.post('/register', async (req, res) => {
-  const { name, email, password, acceptTerms } = req.body;
+  const { name, email, password, acceptTerms, ref } = req.body;
   if (!name || !email || !password) {
-    return res.render('register', { error: 'All fields are required.' });
+    return res.render('register', { error: 'All fields are required.', ref: ref || '' });
   }
   if (!acceptTerms) {
-    return res.render('register', { error: 'You must accept the Terms and Conditions and Privacy Policy to sign up.' });
+    return res.render('register', { error: 'You must accept the Terms and Conditions and Privacy Policy to sign up.', ref: ref || '' });
   }
 
   const existing = await findUserByEmail(email);
   if (existing) {
-    return res.render('register', { error: 'Email already registered.' });
+    return res.render('register', { error: 'Email already registered.', ref: ref || '' });
   }
   const hash = await bcrypt.hash(password, 10);
-  const user = await createUser({ name, email, password: hash });
+
+  // Referral tracking: validate referrer exists before attaching
+  let referredBy = null;
+  if (ref) {
+    const referrer = await findUserById(ref);
+    if (referrer) referredBy = referrer.id;
+  }
+
+  const user = await createUser({ name, email, password: hash, referredBy });
+  if (referredBy) {
+    await incrementReferralCount(referredBy, name);
+  }
   req.session.userId = user.id;
   res.redirect('/dashboard');
 });
+
 
 app.get('/login', (req, res) =>
   res.render('login', {
@@ -465,18 +581,33 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     Offered: apps.filter((a) => a.status === 'Offered')
   };
 
-  const freeLimit = 10;
+  const gamification = getReferralGamificationState(user);
+  const freeLimit = user.plan === 'paid' ? Infinity : gamification.capacity;
   const atLimit = user.plan === 'free' && apps.length >= freeLimit;
 
-  res.render('dashboard', { user, columns, atLimit, freeLimit, appsCount: apps.length });
+  // "Ghostbuster" social reward: consume any pending referral toast (one-time reveal)
+  const referralToastName = await consumePendingReferralToast(user.id);
+
+  res.render('dashboard', {
+    user,
+    columns,
+    atLimit,
+    freeLimit,
+    appsCount: apps.length,
+    gamification,
+    referralToastName
+  });
 });
 
 app.post('/applications', requireAuth, async (req, res) => {
   const user = await findUserById(req.session.userId);
   const apps = await listApplications(user.id);
-  if (user.plan === 'free' && apps.length >= 10) {
+  const gamification = getReferralGamificationState(user);
+  const capacity = user.plan === 'paid' ? Infinity : gamification.capacity;
+  if (user.plan === 'free' && apps.length >= capacity) {
     return res.status(403).redirect('/dashboard?limit=1');
   }
+
   const { company, role, appliedDate, location, ctcLpa, jobType, hrContact, hrEmail, notes } = req.body;
   await createApplication({
     userId: user.id,
@@ -540,9 +671,11 @@ app.get('/ats-matcher', requireAuth, async (req, res) => {
 
 app.post('/ats-matcher', requireAuth, async (req, res) => {
   const user = await findUserById(req.session.userId);
-  if (user.plan !== 'paid') {
+  const gamification = getReferralGamificationState(user);
+  if (user.plan !== 'paid' && !gamification.resumeMatcherUnlocked) {
     return res.redirect('/pricing?upgrade=ats');
   }
+
   const { jobDescription, resume } = req.body;
   const jdWords = new Set(
     jobDescription.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4)
@@ -639,12 +772,22 @@ app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
     if (!parsed) {
       return res.status(422).json({ error: 'Could not extract company/role from the screenshot.' });
     }
-    res.json({ company: parsed.company || '', role: parsed.role || '' });
+    res.json({
+      company: parsed.company || '',
+      role: parsed.role || '',
+      appliedDate: parsed.appliedDate || '',
+      location: parsed.location || '',
+      ctcLpa: parsed.ctcLpa || '',
+      jobType: parsed.jobType || '',
+      hrContact: parsed.hrContact || '',
+      hrEmail: parsed.hrEmail || ''
+    });
   } catch (err) {
     console.error('parse-screenshot error:', err);
     res.status(500).json({ error: err.message || 'Failed to parse screenshot.' });
   }
 });
+
 
 // ---------- Magic Upload: PDF Parsing (Claude) ----------
 app.post('/api/parse-pdf', requireAuth, async (req, res) => {
@@ -655,9 +798,17 @@ app.post('/api/parse-pdf', requireAuth, async (req, res) => {
     const base64Data = pdf.includes(',') ? pdf.split(',')[1] : pdf;
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const pdfParse = require('pdf-parse');
-    const pdfData = await pdfParse(buffer);
-    const extractedText = (pdfData.text || '').trim();
+    // pdf-parse v2 API: use the PDFParse class instead of the old v1 function export.
+    const { PDFParse } = require('pdf-parse');
+    const parser = new PDFParse({ data: buffer });
+    let pdfTextResult;
+    try {
+      pdfTextResult = await parser.getText();
+    } finally {
+      await parser.destroy();
+    }
+    const extractedText = (pdfTextResult.text || '').trim();
+
 
     if (!extractedText) {
       return res.status(422).json({ error: 'Could not extract any text from the PDF.' });
@@ -667,12 +818,22 @@ app.post('/api/parse-pdf', requireAuth, async (req, res) => {
     if (!parsed) {
       return res.status(422).json({ error: 'Could not extract company/role from the PDF content.' });
     }
-    res.json({ company: parsed.company || '', role: parsed.role || '' });
+    res.json({
+      company: parsed.company || '',
+      role: parsed.role || '',
+      appliedDate: parsed.appliedDate || '',
+      location: parsed.location || '',
+      ctcLpa: parsed.ctcLpa || '',
+      jobType: parsed.jobType || '',
+      hrContact: parsed.hrContact || '',
+      hrEmail: parsed.hrEmail || ''
+    });
   } catch (err) {
     console.error('parse-pdf error:', err);
     res.status(500).json({ error: err.message || 'Failed to parse PDF.' });
   }
 });
+
 
 // ---------- Core Loop Fallback: Inbound Email Webhook ----------
 

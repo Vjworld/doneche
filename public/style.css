@@ -120,6 +120,8 @@ button:hover { background: #4747b8; }
   background: #fff;
   padding: 14px 30px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  position: relative;
+  flex-wrap: wrap;
 }
 .brand { font-weight: 700; font-size: 1.2em; }
 .nav-links a, .nav-links .link-btn {
@@ -130,6 +132,62 @@ button:hover { background: #4747b8; }
   font-size: 1em;
   cursor: pointer;
 }
+
+/* ---------- Responsive: hamburger nav toggle ---------- */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #1e1e2e;
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 700px) {
+  .nav-hamburger { display: flex; }
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    background: #fff;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    padding: 10px 20px 16px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    z-index: 950; /* above Kanban cards/columns */
+  }
+  .nav-links.open { display: flex; }
+  .nav-links a, .nav-links .link-btn {
+    margin-left: 0;
+    padding: 12px 4px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .nav-links form { width: 100%; }
+  .nav-links form button { width: 100%; text-align: left; margin-top: 0; }
+}
+
 .badge {
   background: #ffb020;
   color: #fff;
@@ -290,6 +348,30 @@ button:hover { background: #4747b8; }
 }
 .feedback-fab:hover { background: #4747b8; }
 
+/* ---------- Share App floating button (referral growth loop) ---------- */
+.share-app-fab {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  background: #22a55e;
+  color: #fff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 900;
+  margin-top: 0;
+}
+.share-app-fab:hover { background: #178a49; }
+
+@media (max-width: 700px) {
+  .share-app-fab { bottom: 78px; right: 16px; padding: 10px 14px; font-size: 0.9em; }
+  .feedback-fab { right: 16px; }
+}
+
+
 /* ---------- Coming Soon carousel ---------- */
 .coming-soon { margin-top: 32px; }
 .coming-soon h3 { margin-bottom: 12px; }
@@ -339,8 +421,28 @@ button:hover { background: #4747b8; }
 .price-card ul { padding-left: 18px; }
 
 @media (max-width: 900px) {
-  .board { grid-template-columns: 1fr; }
+  /* Horizontal swipeable Kanban board on mobile/tablet instead of a long
+     vertical stack of 5 columns — matches native Trello-style UX. */
+  .board {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    gap: 12px;
+  }
+  .column {
+    flex: 0 0 82%;
+    max-width: 320px;
+    scroll-snap-align: start;
+  }
 }
+
+@media (max-width: 480px) {
+  .column { flex-basis: 88%; }
+}
+
 
 /* ---------- Auth: Forgot Password & T&C ---------- */
 .reset-feedback { font-size: 0.9rem; margin: 4px 0; }
@@ -409,6 +511,313 @@ button:hover { background: #4747b8; }
 .whats-new-entry h3 { margin: 4px 0 8px; }
 .whats-new-entry ul { margin: 0; padding-left: 20px; color: #444; line-height: 1.6; }
 .new-tag { background: #22a55e; color: #fff; font-size: 0.65em; padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+
+/* ---------- Gamification: Ghostbuster tier badge ---------- */
+.ghostbuster-tier {
+  display: inline-block;
+  font-size: 0.5em;
+  font-weight: 600;
+  background: #f0f0ff;
+  color: #5b5bd6;
+  padding: 4px 10px;
+  border-radius: 12px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+/* ---------- Gamification: Capacity Expansion widget ---------- */
+.capacity-widget {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+.capacity-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.95em;
+}
+.capacity-bar {
+  background: #eee;
+  border-radius: 8px;
+  height: 10px;
+  overflow: hidden;
+}
+.capacity-bar-fill {
+  background: linear-gradient(90deg, #5b5bd6, #8a4fff);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+.invite-btn {
+  background: #5b5bd6;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.invite-btn:hover { background: #4a4ac2; }
+
+/* ---------- Gamification: Locked feature wall ---------- */
+.beta-perk.locked {
+  background: linear-gradient(135deg, #8892a0, #5a6472);
+  opacity: 0.95;
+}
+.locked-btn {
+  background: #fff;
+  color: #5a6472 !important;
+}
+
+/* ---------- Gamification: Referral modal ---------- */
+.referral-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  font-size: 0.95em;
+  line-height: 1.9;
+}
+.referral-link-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.referral-link-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85em;
+}
+.referral-link-row button {
+  background: #5b5bd6;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+.referral-link-row button:hover { background: #4a4ac2; }
+
+/* ---------- Gamification: Ghostbuster referral toast ---------- */
+.referral-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1a2e;
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  font-size: 0.95em;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  max-width: 90vw;
+  text-align: center;
+}
+.referral-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Ghost emoji micro-animation (floating bob + subtle fade) ---------- */
+.ghost-emoji {
+  display: inline-block;
+  font-size: 1.15em;
+  transform-origin: center bottom;
+  animation: ghostFloat 2.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes ghostFloat {
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  20%  { transform: translateY(-7px) scale(1.06) rotate(-7deg); opacity: 0.8; }
+  50%  { transform: translateY(1px) scale(1) rotate(0deg); opacity: 1; }
+  75%  { transform: translateY(-5px) scale(1.04) rotate(6deg); opacity: 0.85; }
+  100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+}
+
+
+/* ---------- Referral banner on register page ---------- */
+
+.referral-banner {
+  background: #f0f0ff;
+  color: #5b5bd6;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
+/* ---------- Shared UI helpers: toast notifications ---------- */
+.ui-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+}
+.ui-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e1e2e;
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  font-size: 0.9em;
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ui-toast.show { opacity: 1; transform: translateX(0); }
+.ui-toast-success { background: #1f7a45; }
+.ui-toast-error { background: #a53434; }
+.ui-toast-info { background: #2c3e6b; }
+.ui-toast-icon { flex-shrink: 0; }
+.ui-toast-msg { flex: 1; line-height: 1.4; }
+.ui-toast-close {
+  background: none;
+  border: none;
+  color: #fff;
+  opacity: 0.8;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+}
+.ui-toast-close:hover { opacity: 1; background: none; }
+
+/* ---------- Shared UI helpers: spinners ---------- */
+.ui-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: uiSpin 0.7s linear infinite;
+  vertical-align: middle;
+}
+.ui-spinner-lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  border-color: rgba(91,91,214,0.25);
+  border-top-color: #5b5bd6;
+}
+@keyframes uiSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Shared UI helpers: full-page loader overlay ---------- */
+.ui-page-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.6);
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+}
+.ui-page-loader.show { display: flex; }
+.ui-page-loader-box {
+  background: #fff;
+  padding: 20px 28px;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95em;
+  color: #1e1e2e;
+  font-weight: 600;
+}
+
+/* =========================================================================
+   RESPONSIVE / MOBILE-FRIENDLY OVERRIDES
+   Purely additive — no existing selectors removed, no JS/route logic
+   touched. Targets: tablets (<=900px), phones (<=700px), small phones
+   (<=480px). Ensures 44px min touch targets, comfortable stacking of
+   forms/widgets, and safe modal padding on narrow screens.
+   ========================================================================= */
+
+@media (max-width: 900px) {
+  .dashboard, .simple-page { padding: 20px; }
+  .pricing-cards { justify-content: center; }
+  .price-card { width: 100%; max-width: 340px; }
+}
+
+@media (max-width: 700px) {
+  .topnav { padding: 12px 16px; }
+  .dashboard, .simple-page { padding: 16px; }
+
+  /* Add Application form: stack fields full-width for easy mobile entry */
+  .add-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .add-form input,
+  .add-form select,
+  .add-form .upload-dropdown,
+  .add-form button {
+    width: 100%;
+    min-width: 0;
+  }
+  .upload-dropdown { display: flex; }
+  #uploadScreenshotBtn { width: 100%; }
+  .upload-menu { left: 0; right: 0; width: 100%; min-width: 0; }
+  .info-tip { width: 100%; max-width: 100%; left: 0; }
+
+  /* Touch-friendly minimum tap targets */
+  button, .invite-btn, .beta-perk-btn, .delete-btn, .send-email-btn,
+  .status-select select, select, input[type="text"], input[type="email"],
+  input[type="date"], input[type="password"] {
+    min-height: 44px;
+  }
+
+  /* Modal: reduce padding on narrow screens so inputs aren't squished */
+  .modal-box {
+    padding: 16px;
+    width: 100%;
+    max-width: 94vw;
+  }
+  .modal-close { top: 10px; right: 12px; }
+
+  .capacity-widget-header { flex-direction: column; align-items: stretch; }
+  .invite-btn { width: 100%; }
+
+  .referral-link-row { flex-direction: column; }
+  .referral-link-row button { width: 100%; }
+
+  .beta-perk { padding: 16px; }
+  .carousel-card { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  .auth-card { width: 100%; padding: 24px; }
+  .marketing-headline { font-size: 1.3em; }
+  .dashboard-header h2 { font-size: 1.2em; }
+  .modal-box { padding: 14px; }
+  .board { gap: 8px; }
+}
+
+
+
 
 
 

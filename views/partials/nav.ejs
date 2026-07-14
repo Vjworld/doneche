@@ -1,6 +1,11 @@
 <nav class="topnav">
-  <div class="brand"><a href="<%= typeof user !== 'undefined' && user ? '/dashboard' : '/' %>" style="color:inherit;text-decoration:none;">👻 doneche</a></div>
-  <div class="nav-links">
+    <div class="brand"><a href="<%= typeof user !== 'undefined' && user ? '/dashboard' : '/' %>" style="color:inherit;text-decoration:none;"><span class="ghost-emoji">👻</span> doneche</a></div>
+
+  <button type="button" class="nav-hamburger" id="navHamburgerBtn" aria-label="Toggle menu" aria-expanded="false" onclick="document.getElementById('navLinks').classList.toggle('open'); this.classList.toggle('open');">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div class="nav-links" id="navLinks">
     <% if (typeof user !== 'undefined' && user) { %>
       <a href="/dashboard" class="<%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">Board</a>
       <a href="/ats-matcher" class="<%= typeof activePage !== 'undefined' && activePage === 'ats-matcher' ? 'active' : '' %>">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
@@ -15,3 +20,5 @@
     <% } %>
   </div>
 </nav>
+
+

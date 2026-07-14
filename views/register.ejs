@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head><%- include('partials/head') %></head>
 <body>
@@ -6,12 +7,18 @@
     <%- include('partials/marketing') %>
     <div class="auth-page">
       <div class="auth-card">
-        <h1>👻 doneche</h1>
+        <h1><span class="ghost-emoji">👻</span> doneche</h1>
+
         <p class="tagline">Track applications. Catch ghosting. Follow up in one click.</p>
         <% if (error) { %><p class="error"><%= error %></p><% } %>
         <form method="POST" action="/register">
+          <input type="hidden" name="ref" value="<%= typeof ref !== 'undefined' ? ref : '' %>" />
+          <% if (typeof ref !== 'undefined' && ref) { %>
+            <p class="referral-banner">🎉 You were invited by a friend! Sign up to help them level up.</p>
+          <% } %>
           <label>Name</label>
           <input type="text" name="name" required />
+
           <label>Email</label>
           <input type="email" name="email" required />
           <label>Password</label>

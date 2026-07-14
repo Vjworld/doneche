@@ -11,8 +11,14 @@ create table if not exists users (
   password_hash text not null,
   plan text not null default 'free' check (plan in ('free', 'paid')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- ============ REFERRAL / GAMIFICATION ============
+  referred_by uuid references users(id),
+  referral_count integer not null default 0,
+  pending_referral_toast boolean not null default false,
+  last_referral_name text
 );
+
 
 create index if not exists idx_users_email on users (email);
 

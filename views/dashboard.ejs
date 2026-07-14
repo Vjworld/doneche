@@ -7,39 +7,80 @@
 
   <main class="dashboard">
     <div class="dashboard-header">
-      <h2>Hi, <%= user.name %> 👋</h2>
-      <p>You applied. They went quiet. <strong><%= appsCount %></strong> application<%= appsCount === 1 ? '' : 's' %> tracked <% if (user.plan === 'free') { %>(<%= freeLimit %> free limit)<% } %></p>
+      <h2>Hi, <%= user.name %> 👋 <span class="ghostbuster-tier"><%= gamification.tier.badge %> <%= gamification.tier.title %></span></h2>
+      <p>You applied. They went quiet. <strong><%= appsCount %></strong> application<%= appsCount === 1 ? '' : 's' %> tracked <% if (user.plan === 'free') { %>(<%= freeLimit %> slot limit)<% } %></p>
     </div>
 
     <% if (atLimit) { %>
-      <div class="alert">You've hit your free limit of <%= freeLimit %> applications. <a href="/pricing">Upgrade</a> to track unlimited.</div>
+      <div class="alert">You've hit your limit of <%= freeLimit %> applications. <a href="/pricing">Upgrade</a> or invite friends below to unlock more slots.</div>
     <% } %>
 
-    <!-- Beta Perk: AI Interviewer -->
-    <div class="beta-perk">
-      <div class="beta-perk-badge">🎁 Premium Beta Perk Unlocked</div>
+    <!-- "Capacity Expansion" (Dropbox Model): application slot counter -->
+    <% if (user.plan === 'free') { %>
+      <div class="capacity-widget">
+        <div class="capacity-widget-header">
+          <span>📦 Storage: <strong><%= appsCount %>/<%= gamification.capacity %></strong> applications</span>
+          <button type="button" class="invite-btn" onclick="openReferralModal()">➕ Invite a Colleague for +5 Slots</button>
+        </div>
+        <div class="capacity-bar">
+          <div class="capacity-bar-fill" style="width: <%= Math.min(100, Math.round((appsCount / gamification.capacity) * 100)) %>%"></div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- "Milestone Unlock" (Feature Wall): AI Interviewer + Resume Matcher -->
+    <div class="beta-perk<%= gamification.aiSimulatorUnlocked ? '' : ' locked' %>">
+      <div class="beta-perk-badge">
+        <% if (gamification.aiSimulatorUnlocked) { %>
+          🎁 Premium Beta Perk Unlocked
+        <% } else { %>
+          🔒 Locked — Invite 1 friend to unlock
+        <% } %>
+      </div>
       <p class="beta-perk-desc">Practice your interview pitch directly with our AI Simulator.</p>
-      <button type="button" class="beta-perk-btn" onclick="window.open('https://aistudio.instagram.com/ai/4265674450327484/?utm_source=share', '_blank')">
-        🚀 Launch AI Interviewer
-      </button>
+      <% if (gamification.aiSimulatorUnlocked) { %>
+        <button type="button" class="beta-perk-btn" onclick="window.open('https://aistudio.instagram.com/ai/4265674450327484/?utm_source=share', '_blank')">
+          🚀 Launch AI Interviewer
+        </button>
+      <% } else { %>
+        <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 Unlock with 1 Referral</button>
+      <% } %>
     </div>
+
+    <div class="beta-perk<%= gamification.resumeMatcherUnlocked ? '' : ' locked' %>">
+      <div class="beta-perk-badge">
+        <% if (gamification.resumeMatcherUnlocked) { %>
+          🎁 VIP Front-of-Line Access Unlocked
+        <% } else { %>
+          🔒 Locked — Invite 3 friends to unlock
+        <% } %>
+      </div>
+      <p class="beta-perk-desc">Get VIP front-of-line access to the upcoming AI Resume Matcher.</p>
+      <% if (gamification.resumeMatcherUnlocked) { %>
+        <a href="/ats-matcher" class="beta-perk-btn">🎯 Try AI Resume Matcher</a>
+      <% } else { %>
+        <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 <%= gamification.referralsToNextUnlock %> more referral<%= gamification.referralsToNextUnlock === 1 ? '' : 's' %> needed</button>
+      <% } %>
+    </div>
+
 
 
     <form method="POST" action="/applications" class="add-form" id="addAppForm">
 
       <input type="text" name="company" id="companyInput" placeholder="Company" required />
       <input type="text" name="role" id="roleInput" placeholder="Role" required />
-      <input type="date" name="appliedDate" required />
-      <input type="text" name="location" placeholder="Location (optional)" />
-      <input type="text" name="ctcLpa" placeholder="CTC (LPA, optional)" />
-      <select name="jobType">
+      <input type="date" name="appliedDate" id="appliedDateInput" required />
+      <input type="text" name="location" id="locationInput" placeholder="Location (optional)" />
+      <input type="text" name="ctcLpa" id="ctcLpaInput" placeholder="CTC (LPA, optional)" />
+      <select name="jobType" id="jobTypeInput">
         <option value="">Job Type (optional)</option>
         <option value="WFO">WFO</option>
         <option value="Remote">Remote</option>
         <option value="Hybrid">Hybrid</option>
       </select>
-      <input type="text" name="hrContact" placeholder="HR Contact Name (optional)" />
-      <input type="email" name="hrEmail" placeholder="HR Email (optional)" />
+      <input type="text" name="hrContact" id="hrContactInput" placeholder="HR Contact Name (optional)" />
+      <input type="email" name="hrEmail" id="hrEmailInput" placeholder="HR Email (optional)" />
+
 
       <div class="upload-dropdown" id="uploadDropdown">
         <button type="button" id="uploadScreenshotBtn" onclick="toggleUploadMenu(event)">📎 Magic Upload ▾</button>
@@ -136,8 +177,43 @@
     </div>
   </main>
 
+  <!-- Share App / Referral floating button (always visible, regardless of plan) -->
+  <button type="button" id="shareAppFab" class="share-app-fab" onclick="openReferralModal()">🔗 Share App</button>
+
   <!-- Feedback / Bug report floating button -->
   <button type="button" id="feedbackFab" class="feedback-fab" onclick="openFeedbackModal()">💬 Feedback</button>
+
+
+  <!-- Referral / Invite modal ("Milestone Unlock" + "Capacity Expansion" CTA) -->
+  <div id="referralModal" class="modal-overlay" onclick="closeReferralModalOnOverlay(event)">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeReferralModal()">&times;</button>
+      <h3>🚀 Level Up by Inviting Friends</h3>
+      <p>Save a friend from the ATS Black Hole — and unlock rewards for yourself.</p>
+      <ul class="referral-benefits">
+        <li><%= gamification.aiSimulatorUnlocked ? '✅' : '🔒' %> 1 referral — Unlock AI Interview Simulator</li>
+        <li><%= gamification.resumeMatcherUnlocked ? '✅' : '🔒' %> 3 referrals — VIP AI Resume Matcher access</li>
+        <li><%= gamification.referralCount >= 5 ? '✅' : '🔒' %> 5 referrals — Earn the "Ghostbuster" badge</li>
+      </ul>
+      <p>Each referral also gives you <strong>+5 application slots</strong>.</p>
+      <p>You currently have <strong><%= gamification.referralCount %></strong> referral<%= gamification.referralCount === 1 ? '' : 's' %>.</p>
+      <label>Your unique invite link:</label>
+      <div class="referral-link-row">
+        <input type="text" id="referralLinkInput" readonly value="<%= gamification.referralLink %>" />
+        <button type="button" onclick="copyReferralLink()">📋 Copy My Invite Link</button>
+      </div>
+      <p id="referralCopyFeedback" class="reset-feedback"></p>
+    </div>
+  </div>
+
+  <!-- Ghostbuster referral toast (social/visual reward) -->
+  <% if (typeof referralToastName !== 'undefined' && referralToastName) { %>
+    <div id="referralToast" class="referral-toast">
+      🎉 Boom! <strong><%= referralToastName %></strong> just joined doneche using your link.
+      <% if (gamification.referralCount >= 5) { %> You are officially a <strong>Ghostbuster</strong>! 🏆<% } %>
+    </div>
+  <% } %>
+
 
 
   <div id="feedbackModal" class="modal-overlay" onclick="closeFeedbackModalOnOverlay(event)">
@@ -201,9 +277,19 @@
       if (evt.target.closest('form') || evt.target.tagName === 'A' || evt.target.tagName === 'BUTTON' || evt.target.tagName === 'SELECT') {
         return; // don't open modal when interacting with inner controls
       }
-      const res = await fetch('/applications/' + id);
-      if (!res.ok) return;
-      const app = await res.json();
+      let app;
+      try {
+        const res = await fetch('/applications/' + id);
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          throw new Error('Could not load application details.');
+        }
+        app = await res.json();
+      } catch (err) {
+        if (window.showToast) window.showToast(err.message || 'Failed to load application details.', 'error');
+        return;
+      }
+
       document.getElementById('modalTitle').textContent = app.role + ' @ ' + app.company;
       document.getElementById('modalLocation').value = app.location || '';
       document.getElementById('modalCtc').value = app.ctcLpa || '';
@@ -231,7 +317,72 @@
       if (evt.target.id === 'feedbackModal') closeFeedbackModal();
     }
 
+    // ---------- Referral modal ----------
+    function openReferralModal() {
+      document.getElementById('referralModal').classList.add('open');
+    }
+    function closeReferralModal() {
+      document.getElementById('referralModal').classList.remove('open');
+    }
+    function closeReferralModalOnOverlay(evt) {
+      if (evt.target.id === 'referralModal') closeReferralModal();
+    }
+    function copyReferralLink() {
+      const input = document.getElementById('referralLinkInput');
+      input.select();
+      input.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(input.value).then(function () {
+        const fb = document.getElementById('referralCopyFeedback');
+        fb.textContent = '✅ Link copied! Go paste it in your WhatsApp/Telegram groups.';
+        fb.style.color = '#2ecc71';
+        if (window.showToast) window.showToast('Invite link copied to clipboard!', 'success');
+      }).catch(function () {
+        try {
+          document.execCommand('copy');
+          if (window.showToast) window.showToast('Invite link copied to clipboard!', 'success');
+        } catch (err) {
+          if (window.showToast) window.showToast('Could not copy link. Please copy it manually.', 'error');
+        }
+      });
+    }
+
+
+    // ---------- Ghostbuster toast + confetti (social/visual reward) ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      const toast = document.getElementById('referralToast');
+      if (!toast) return;
+      toast.classList.add('show');
+
+      // Lightweight confetti burst using canvas-confetti (loaded via CDN below)
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
+      }
+
+      setTimeout(function () {
+        toast.classList.remove('show');
+      }, 6000);
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script>
+
+
+    // ---------- Magic Upload: apply all extracted fields (mandatory + optional) to the form ----------
+    function applyMagicUploadFields(data) {
+      if (!data) return;
+      if (data.company) document.getElementById('companyInput').value = data.company;
+      if (data.role) document.getElementById('roleInput').value = data.role;
+      if (data.appliedDate) document.getElementById('appliedDateInput').value = data.appliedDate;
+      if (data.location) document.getElementById('locationInput').value = data.location;
+      if (data.ctcLpa) document.getElementById('ctcLpaInput').value = data.ctcLpa;
+      if (data.jobType) document.getElementById('jobTypeInput').value = data.jobType;
+      if (data.hrContact) document.getElementById('hrContactInput').value = data.hrContact;
+      if (data.hrEmail) document.getElementById('hrEmailInput').value = data.hrEmail;
+    }
+
     // ---------- Magic Upload: dropdown menu + info tooltip ----------
+
     function toggleUploadMenu(evt) {
       evt.stopPropagation();
       document.getElementById('uploadMenu').classList.toggle('open');
@@ -248,6 +399,23 @@
       }
     });
 
+    // Helper: safely parse a fetch Response as JSON. If the server returns
+    // an HTML error page (e.g. a 500 stack trace or platform error page)
+    // instead of JSON, surface a clean error message instead of the raw
+    // "Unexpected token '<' ... is not valid JSON" parser error.
+    async function parseJsonResponse(res) {
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text().catch(function () { return ''; });
+        throw new Error(
+          res.ok
+            ? 'Unexpected server response. Please try again.'
+            : 'Server error (' + res.status + '). Please try again in a moment.'
+        );
+      }
+      return res.json();
+    }
+
     // ---------- Magic Upload: PDF Parsing (sent email) ----------
     function handlePdfUpload(evt) {
       const file = evt.target.files && evt.target.files[0];
@@ -256,6 +424,8 @@
       const statusEl = document.getElementById('screenshotStatus');
       statusEl.textContent = 'Analyzing PDF...';
       statusEl.style.color = '#888';
+      const uploadBtn = document.getElementById('uploadScreenshotBtn');
+      const restoreBtn = window.setButtonLoading ? window.setButtonLoading(uploadBtn, 'Analyzing...') : function () {};
 
       const reader = new FileReader();
       reader.onload = async function () {
@@ -266,20 +436,30 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pdf: base64Pdf })
           });
-          const data = await res.json();
+          const data = await parseJsonResponse(res);
           if (!res.ok) throw new Error(data.error || 'Failed to parse PDF.');
 
-          if (data.company) document.getElementById('companyInput').value = data.company;
-          if (data.role) document.getElementById('roleInput').value = data.role;
+          applyMagicUploadFields(data);
 
           statusEl.textContent = '✅ Auto-filled from PDF! Please review before saving.';
           statusEl.style.color = '#2ecc71';
+          if (window.showToast) window.showToast('PDF parsed successfully! Review the auto-filled fields.', 'success');
         } catch (err) {
-          statusEl.textContent = '❌ ' + (err.message || 'Could not parse PDF.');
+          const message = err.message || 'Could not parse PDF.';
+          statusEl.textContent = '❌ ' + message;
           statusEl.style.color = '#c0392b';
+          if (window.showToast) window.showToast(message, 'error');
         } finally {
           evt.target.value = '';
+          restoreBtn();
         }
+      };
+      reader.onerror = function () {
+        const message = 'Could not read the selected PDF file.';
+        statusEl.textContent = '❌ ' + message;
+        statusEl.style.color = '#c0392b';
+        if (window.showToast) window.showToast(message, 'error');
+        restoreBtn();
       };
       reader.readAsDataURL(file);
     }
@@ -293,6 +473,8 @@
       const statusEl = document.getElementById('screenshotStatus');
       statusEl.textContent = 'Analyzing screenshot...';
       statusEl.style.color = '#888';
+      const uploadBtn = document.getElementById('uploadScreenshotBtn');
+      const restoreBtn = window.setButtonLoading ? window.setButtonLoading(uploadBtn, 'Analyzing...') : function () {};
 
       const reader = new FileReader();
       reader.onload = async function () {
@@ -303,23 +485,34 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: base64Image, mediaType: file.type })
           });
-          const data = await res.json();
+          const data = await parseJsonResponse(res);
           if (!res.ok) throw new Error(data.error || 'Failed to parse screenshot.');
 
-          if (data.company) document.getElementById('companyInput').value = data.company;
-          if (data.role) document.getElementById('roleInput').value = data.role;
+          applyMagicUploadFields(data);
 
           statusEl.textContent = '✅ Auto-filled! Please review before saving.';
           statusEl.style.color = '#2ecc71';
+          if (window.showToast) window.showToast('Screenshot parsed successfully! Review the auto-filled fields.', 'success');
         } catch (err) {
-          statusEl.textContent = '❌ ' + (err.message || 'Could not parse screenshot.');
+          const message = err.message || 'Could not parse screenshot.';
+          statusEl.textContent = '❌ ' + message;
           statusEl.style.color = '#c0392b';
+          if (window.showToast) window.showToast(message, 'error');
         } finally {
           evt.target.value = '';
+          restoreBtn();
         }
+      };
+      reader.onerror = function () {
+        const message = 'Could not read the selected image file.';
+        statusEl.textContent = '❌ ' + message;
+        statusEl.style.color = '#c0392b';
+        if (window.showToast) window.showToast(message, 'error');
+        restoreBtn();
       };
       reader.readAsDataURL(file);
     }
+
 
     // ---------- 1-Click Follow-Up Email (mailto:) ----------
 
@@ -338,7 +531,20 @@
       window.location.href = mailtoLink;
     }
 
+    // ---------- Loading states on standard form submits (Add/Delete/Status/Feedback/Details) ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn && window.setButtonLoading) {
+            window.setButtonLoading(btn, 'Please wait...');
+          }
+        });
+      });
+    });
+
     // ---------- First-Time App Tour (driver.js) ----------
+
     document.addEventListener('DOMContentLoaded', function () {
       if (localStorage.getItem('tour_completed')) return;
       if (typeof driver === 'undefined') return;
