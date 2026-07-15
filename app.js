@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const nodemailer = require('nodemailer');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 let Anthropic;
 let anthropicClient = null;
@@ -162,7 +164,36 @@ Best regards,
 
 const app = express();
 
+// Trust Netlify's proxy so secure cookies / rate-limit IP detection work correctly.
+app.set('trust proxy', 1);
+
+// ---------- Security headers (Helmet) ----------
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // app relies on several external CDN scripts (driver.js, canvas-confetti, supabase-js)
+    crossOriginEmbedderPolicy: false
+  })
+);
+
+// ---------- Rate limiting ----------
+// General API/auth rate limiter to slow down brute-force / abuse.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again later.' }
+});
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' }
+});
+
 app.set('view engine', 'ejs');
+
 // In the bundled Netlify function, included_files preserve their path
 // relative to the project base directory (LAMBDA_TASK_ROOT), NOT relative
 // to this file's location inside netlify/functions. Resolve accordingly.
@@ -512,11 +543,16 @@ app.get('/', (req, res) => {
 
 app.get('/register', (req, res) => res.render('register', { error: null, ref: req.query.ref || '' }));
 
-app.post('/register', async (req, res) => {
+app.post('/register', authLimiter, async (req, res) => {
+
   const { name, email, password, acceptTerms, ref } = req.body;
   if (!name || !email || !password) {
     return res.render('register', { error: 'All fields are required.', ref: ref || '' });
   }
+  if (password.length < 6) {
+    return res.render('register', { error: 'Password must be at least 6 characters.', ref: ref || '' });
+  }
+
   if (!acceptTerms) {
     return res.render('register', { error: 'You must accept the Terms and Conditions and Privacy Policy to sign up.', ref: ref || '' });
   }
@@ -552,7 +588,8 @@ app.get('/login', (req, res) =>
 );
 
 
-app.post('/login', async (req, res) => {
+app.post('/login', authLimiter, async (req, res) => {
+
   const { email, password } = req.body;
   const user = await findUserByEmail(email);
   if (!user) return res.render('login', { error: 'Invalid credentials.' });
@@ -758,7 +795,8 @@ app.get('/whats-new', async (req, res) => {
 
 // ---------- Magic Upload: Screenshot Parsing (Claude) ----------
 
-app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
+app.post('/api/parse-screenshot', requireAuth, apiLimiter, async (req, res) => {
+
   try {
     const { image, mediaType } = req.body;
     if (!image) return res.status(400).json({ error: 'Missing image data.' });
@@ -790,7 +828,8 @@ app.post('/api/parse-screenshot', requireAuth, async (req, res) => {
 
 
 // ---------- Magic Upload: PDF Parsing (Claude) ----------
-app.post('/api/parse-pdf', requireAuth, async (req, res) => {
+app.post('/api/parse-pdf', requireAuth, apiLimiter, async (req, res) => {
+
   try {
     const { pdf } = req.body; // base64-encoded PDF (data URL or raw base64)
     if (!pdf) return res.status(400).json({ error: 'Missing PDF data.' });
@@ -837,7 +876,8 @@ app.post('/api/parse-pdf', requireAuth, async (req, res) => {
 
 // ---------- Core Loop Fallback: Inbound Email Webhook ----------
 
-app.post('/api/inbound-email', async (req, res) => {
+app.post('/api/inbound-email', apiLimiter, async (req, res) => {
+
   try {
     const { subject, text, from } = req.body;
     if (!from || !text) {

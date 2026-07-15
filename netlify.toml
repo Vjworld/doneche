@@ -11,7 +11,8 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js", "ejs", "bcryptjs", "express", "express-session"]
+  external_node_modules = ["@supabase/supabase-js", "ejs", "bcryptjs", "express", "express-session", "helmet", "express-rate-limit"]
+
   included_files = ["views/**"]
 
 
