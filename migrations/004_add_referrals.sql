@@ -1,4 +1,4 @@
--- Migration: Referral / Gamification system
+ate/-- Migration: Referral / Gamification system
 -- Adds referral tracking columns to users table.
 
 alter table users add column if not exists referred_by uuid references users(id);
