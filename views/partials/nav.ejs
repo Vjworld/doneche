@@ -8,19 +8,46 @@
   <div class="nav-links" id="navLinks">
     <% if (typeof user !== 'undefined' && user) { %>
       <a href="/dashboard" class="<%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">Board</a>
+      <a href="/jobs" class="<%= typeof activePage !== 'undefined' && activePage === 'jobs' ? 'active' : '' %>">🎯 Jobs</a>
       <a href="/ats-matcher" class="<%= typeof activePage !== 'undefined' && activePage === 'ats-matcher' ? 'active' : '' %>">ATS Matcher <% if (user.plan !== 'paid') { %><span class="badge">PRO</span><% } %></a>
+
       <a href="/pricing" class="<%= typeof activePage !== 'undefined' && activePage === 'pricing' ? 'active' : '' %>">Pricing</a>
       <a href="/whats-new" class="<%= typeof activePage !== 'undefined' && activePage === 'whats-new' ? 'active' : '' %>">What's New</a>
       <a href="/coming-soon" class="<%= typeof activePage !== 'undefined' && activePage === 'coming-soon' ? 'active' : '' %>">Coming Soon</a>
-      <form method="POST" action="/logout" style="display:inline">
 
-        <button type="submit" class="link-btn">Logout</button>
-      </form>
+      <!-- Account / Settings dropdown menu -->
+      <div class="nav-menu-dropdown" id="navMenuDropdown">
+        <button type="button" class="nav-menu-btn" onclick="event.stopPropagation(); document.getElementById('navMenuDropdown').classList.toggle('open')">
+          👤 Menu ▾
+        </button>
+        <div class="nav-menu-panel">
+          <a href="/profile" class="<%= typeof activePage !== 'undefined' && activePage === 'profile' ? 'active' : '' %>">🧑‍💼 Profile</a>
+          <a href="/settings" class="<%= typeof activePage !== 'undefined' && activePage === 'settings' ? 'active' : '' %>">⚙️ Settings &amp; Preferences</a>
+          <a href="/help" class="<%= typeof activePage !== 'undefined' && activePage === 'help' ? 'active' : '' %>">📘 Help / Documentation</a>
+          <a href="/faq" class="<%= typeof activePage !== 'undefined' && activePage === 'faq' ? 'active' : '' %>">❓ FAQ</a>
+          <hr />
+          <form method="POST" action="/logout">
+            <button type="submit" class="link-btn nav-menu-logout">🚪 Logout</button>
+          </form>
+        </div>
+      </div>
     <% } else { %>
       <a href="/login" class="<%= typeof activePage !== 'undefined' && activePage === 'login' ? 'active' : '' %>">Log In</a>
       <a href="/register" class="<%= typeof activePage !== 'undefined' && activePage === 'register' ? 'active' : '' %>">Sign Up</a>
+      <a href="/help" class="<%= typeof activePage !== 'undefined' && activePage === 'help' ? 'active' : '' %>">Help</a>
+      <a href="/faq" class="<%= typeof activePage !== 'undefined' && activePage === 'faq' ? 'active' : '' %>">FAQ</a>
     <% } %>
   </div>
 </nav>
+
+<script>
+  document.addEventListener('click', function (evt) {
+    var dropdown = document.getElementById('navMenuDropdown');
+    if (dropdown && !evt.target.closest('#navMenuDropdown')) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+
 
 

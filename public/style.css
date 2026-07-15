@@ -197,8 +197,10 @@ button:hover { background: #4747b8; }
   margin-left: 4px;
 }
 
-.dashboard, .simple-page { max-width: 1200px; margin: 0 auto; padding: 30px; }
-.dashboard-header { margin-bottom: 20px; }
+.dashboard, .simple-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+.dashboard-header { margin-bottom: 14px; }
+.dashboard-header p { margin: 4px 0 0; color: #666; }
+
 .alert {
   background: #fff3cd;
   border: 1px solid #ffe69c;
@@ -300,35 +302,49 @@ button:hover { background: #4747b8; }
 
 
 /* ---------- Beta Perk ---------- */
+/* Compact, side-by-side cards instead of two tall stacked banners —
+   reduces vertical scroll and visual "box overload". */
+.beta-perks-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
 .beta-perk {
   background: linear-gradient(135deg, #5b5bd6, #8a4fff);
   color: #fff;
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(91,91,214,0.3);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 0;
+  box-shadow: 0 2px 10px rgba(91,91,214,0.18);
 }
 .beta-perk-badge {
   display: inline-block;
   background: rgba(255,255,255,0.2);
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 20px;
-  font-size: 0.85em;
+  font-size: 0.78em;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
-.beta-perk-desc { margin: 6px 0 14px; font-size: 1em; opacity: 0.95; }
+.beta-perk-desc { margin: 4px 0 10px; font-size: 0.9em; opacity: 0.95; line-height: 1.4; }
 .beta-perk-btn {
   background: #fff;
   color: #5b5bd6;
   font-weight: 700;
   border: none;
-  padding: 10px 20px;
+  padding: 8px 16px;
+  font-size: 0.85em;
   border-radius: 8px;
   cursor: pointer;
   margin-top: 0;
 }
 .beta-perk-btn:hover { background: #f0f0ff; }
+
+@media (max-width: 700px) {
+  .beta-perks-row { grid-template-columns: 1fr; }
+}
+
 
 /* ---------- Feedback floating button ---------- */
 .feedback-fab {
@@ -373,28 +389,28 @@ button:hover { background: #4747b8; }
 
 
 /* ---------- Coming Soon carousel ---------- */
-.coming-soon { margin-top: 32px; }
-.coming-soon h3 { margin-bottom: 12px; }
-.carousel { position: relative; overflow: hidden; border-radius: 12px; }
+.coming-soon { margin-top: 20px; }
+.coming-soon h3 { margin-bottom: 8px; font-size: 1.05em; }
+.carousel { position: relative; overflow: hidden; border-radius: 10px; }
 .carousel input[type="radio"] { display: none; }
 .carousel-track {
   display: flex;
-  width: 200%;
-  transition: transform 0.4s ease;
+  transition: transform 0.5s ease;
 }
-.carousel-slide { width: 50%; flex-shrink: 0; padding: 0 4px; }
+.carousel-slide { flex-shrink: 0; padding: 0 4px; }
+
 .carousel-card {
   background: #fff;
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 10px;
+  padding: 14px 18px;
   text-align: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-  min-height: 140px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  min-height: 0;
 }
-.carousel-icon { font-size: 2em; margin-bottom: 8px; }
-.carousel-card h4 { margin: 4px 0; }
-.carousel-card p { color: #666; margin: 4px 0 0; }
-#slide2:checked ~ .carousel-track { transform: translateX(-50%); }
+.carousel-icon { font-size: 1.5em; margin-bottom: 4px; }
+.carousel-card h4 { margin: 2px 0; font-size: 0.95em; }
+.carousel-card p { color: #666; margin: 2px 0 0; font-size: 0.85em; }
+
 .carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
 .carousel-dots label {
   width: 10px;
@@ -404,8 +420,8 @@ button:hover { background: #4747b8; }
   cursor: pointer;
   display: inline-block;
 }
-#slide1:checked ~ .carousel-dots label:nth-child(1),
-#slide2:checked ~ .carousel-dots label:nth-child(2) { background: #5b5bd6; }
+.carousel-dots label.active { background: #5b5bd6; }
+
 
 .pricing-cards { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
 
@@ -572,8 +588,8 @@ button:hover { background: #4747b8; }
   background: #fff;
   border: 1px solid #eee;
   border-radius: 10px;
-  padding: 14px 16px;
-  margin: 16px 0;
+  padding: 10px 14px;
+  margin: 0 0 14px;
 }
 .capacity-widget-header {
   display: flex;
@@ -581,9 +597,10 @@ button:hover { background: #4747b8; }
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 8px;
-  font-size: 0.95em;
+  margin-bottom: 6px;
+  font-size: 0.9em;
 }
+
 .capacity-bar {
   background: #eee;
   border-radius: 8px;
@@ -857,6 +874,165 @@ button:hover { background: #4747b8; }
   .modal-box { padding: 14px; }
   .board { gap: 8px; }
 }
+
+/* ---------- Nav: Account/Settings dropdown menu ---------- */
+.nav-menu-dropdown {
+  position: relative;
+  display: inline-block;
+  margin-left: 20px;
+}
+.nav-menu-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.95em;
+  color: inherit;
+}
+.nav-menu-btn:hover { background: #f0f0f7; }
+.nav-menu-panel {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid #e0e0e8;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  min-width: 220px;
+  padding: 8px;
+  z-index: 50;
+}
+.nav-menu-dropdown.open .nav-menu-panel { display: block; }
+.nav-menu-panel a, .nav-menu-panel .nav-menu-logout {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #1e1e2e;
+  text-decoration: none;
+  font-size: 0.95em;
+  margin: 0;
+}
+.nav-menu-panel a:hover, .nav-menu-panel .nav-menu-logout:hover {
+  background: #f0f0f7;
+  text-decoration: none;
+}
+.nav-menu-panel a.active { font-weight: 700; color: #5b5bd6; }
+.nav-menu-panel hr { border: none; border-top: 1px solid #eee; margin: 6px 0; }
+.nav-menu-panel form { margin: 0; }
+.nav-menu-logout {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+@media (max-width: 700px) {
+  .nav-menu-dropdown { margin-left: 0; width: 100%; }
+  .nav-menu-btn { width: 100%; text-align: left; }
+  .nav-menu-panel { position: static; box-shadow: none; border: none; padding: 0 0 0 8px; }
+}
+
+/* ---------- Settings page ---------- */
+.settings-section {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.settings-section h3 { margin-top: 0; }
+.theme-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f0f7;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+.theme-toggle-btn:hover { background: #e4e4f0; }
+
+/* ---------- Profile page ---------- */
+.profile-resume-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.profile-form { flex-direction: column; align-items: stretch; gap: 12px; }
+.profile-form label { font-weight: 600; margin-top: 4px; }
+.profile-form input, .profile-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.profile-form button { align-self: flex-start; }
+
+/* ---------- FAQ page ---------- */
+.faq-list { display: flex; flex-direction: column; gap: 10px; }
+.faq-item {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.faq-item summary { font-weight: 600; cursor: pointer; }
+.faq-item p { margin: 10px 0 0; color: #444; }
+
+/* ---------- Dark theme ---------- */
+html[data-theme="dark"] body {
+  background: #14141f;
+  color: #e6e6f0;
+}
+html[data-theme="dark"] a { color: #9d9dff; }
+html[data-theme="dark"] .topnav,
+html[data-theme="dark"] .settings-section,
+html[data-theme="dark"] .faq-item,
+html[data-theme="dark"] .nav-menu-panel,
+html[data-theme="dark"] .modal-box,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .column,
+html[data-theme="dark"] .beta-perk {
+  background: #1e1e2e;
+  border-color: #33334a;
+  color: #e6e6f0;
+}
+html[data-theme="dark"] .nav-menu-panel a,
+html[data-theme="dark"] .nav-menu-logout {
+  color: #e6e6f0;
+}
+html[data-theme="dark"] .nav-menu-panel a:hover,
+html[data-theme="dark"] .nav-menu-logout:hover {
+  background: #2a2a3d;
+}
+html[data-theme="dark"] .profile-form input,
+html[data-theme="dark"] .profile-form textarea,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: #14141f;
+  color: #e6e6f0;
+  border-color: #33334a;
+}
+html[data-theme="dark"] .theme-toggle-btn {
+  background: #2a2a3d;
+  border-color: #33334a;
+  color: #e6e6f0;
+}
+
 
 
 

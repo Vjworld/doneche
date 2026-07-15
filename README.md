@@ -15,7 +15,15 @@ Job application tracker for frustrated job seekers. Auto-flags when a company ha
 - Unlimited applications
 - ATS Keyword Matcher (paste JD + resume → top missing keywords)
 
-## Features — Growth & UX (latest)
+## Features — Profile, Account Menu & Personalization (latest)
+- **Professional Profile**: manually enter/edit your professional title, summary, skills, and experience — or upload your resume (PDF) to auto-extract this info via Claude AI. Extracted data is always shown for your review and confirmation before it's saved.
+- **Account menu**: dropdown nav menu with Profile, Settings, Help documentation, and FAQ.
+- **Settings & Preferences**: light/dark theme toggle, applied instantly app-wide and remembered per-user.
+- **Help & FAQ pages**: in-app documentation on how to use core features, plus a collapsible FAQ section.
+- **Decluttered dashboard**: compact side-by-side "Milestone Unlock" perk cards, tighter spacing, and a "Coming Soon" carousel that auto-advances through all upcoming roadmap features.
+
+## Features — Growth & UX
+
 - **Referral / Gamification system**: unique invite link per user; 1 referral unlocks the AI Interview Simulator, 3 referrals unlock VIP AI Resume Matcher access, 5 referrals earns the "Ghostbuster" badge. Each referral also grants +5 application storage slots (Capacity Expansion widget).
 - **Share App button**: always-visible floating button on the dashboard for quick access to your invite link.
 - **Referral toast + confetti**: celebratory notification when a friend joins using your link.

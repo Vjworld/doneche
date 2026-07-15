@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'settings' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="/dashboard" class="breadcrumb-back">&larr; Back</a>
+    <h2>⚙️ Settings &amp; Preferences</h2>
+
+    <div class="settings-section">
+      <h3>Appearance</h3>
+      <p>Choose how doneche looks on your device.</p>
+      <div class="theme-toggle-row">
+        <span>Theme:</span>
+        <button type="button" id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()">
+          <span id="themeToggleIcon"><%= (user.theme_preference === 'dark') ? '🌙' : '☀️' %></span>
+          <span id="themeToggleLabel"><%= (user.theme_preference === 'dark') ? 'Dark Mode' : 'Light Mode' %></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Account</h3>
+      <p><strong>Name:</strong> <%= user.name %></p>
+      <p><strong>Email:</strong> <%= user.email %></p>
+      <p><strong>Plan:</strong> <%= user.plan === 'paid' ? 'Pro' : 'Free' %></p>
+      <p><a href="/profile">🧑‍💼 Edit professional profile &rarr;</a></p>
+    </div>
+
+    <div class="settings-section">
+      <h3>Need help?</h3>
+      <p><a href="/help">📘 View Help &amp; Documentation</a> &nbsp;|&nbsp; <a href="/faq">❓ Read the FAQ</a></p>
+    </div>
+  </main>
+
+  <script>
+    async function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try {
+        await fetch('/settings/theme', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ theme: next })
+        });
+        if (window.showToast) window.showToast('Theme updated to ' + next + ' mode.', 'success');
+      } catch (err) {
+        if (window.showToast) window.showToast('Could not save theme preference.', 'error');
+      }
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('doneche_theme', theme);
+      const icon = document.getElementById('themeToggleIcon');
+      const label = document.getElementById('themeToggleLabel');
+      if (icon) icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+      if (label) label.textContent = theme === 'dark' ? 'Dark Mode' : 'Light Mode';
+    }
+  </script>
+</body>
+</html>

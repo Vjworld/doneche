@@ -16,8 +16,20 @@ create table if not exists users (
   referred_by uuid references users(id),
   referral_count integer not null default 0,
   pending_referral_toast boolean not null default false,
-  last_referral_name text
+  last_referral_name text,
+  -- ============ PROFESSIONAL PROFILE ============
+  professional_title text,
+  professional_summary text,
+  skills text,
+  experience_years text,
+  theme_preference text not null default 'light' check (theme_preference in ('light', 'dark')),
+  -- ============ RESUME (curated job matching) ============
+  resume_filename text,
+  resume_text text,
+  resume_uploaded_at timestamptz
 );
+
+
 
 
 create index if not exists idx_users_email on users (email);
@@ -114,7 +126,40 @@ alter table waitlist enable row level security;
 create policy "Users can view own waitlist entry" on waitlist
   for select using (auth.uid()::text = user_id::text);
 
+-- ============ CURATED JOBS + IN-APP APPLY ============
+create table if not exists jobs (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null,
+  company text not null,
+  domain text not null,
+  location text,
+  job_type text check (job_type in ('WFO', 'Remote', 'Hybrid') or job_type is null),
+  ctc_lpa text,
+  skills text not null,
+  description text,
+  apply_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_jobs_domain on jobs (domain);
+
+alter table jobs enable row level security;
+create policy "Jobs are publicly readable" on jobs for select using (true);
+
+create table if not exists job_applications (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references users (id) on delete cascade,
+  job_id uuid not null references jobs (id) on delete cascade,
+  applied_at timestamptz not null default now(),
+  unique (user_id, job_id)
+);
+
+alter table job_applications enable row level security;
+create policy "Users can view own job applications" on job_applications
+  for select using (auth.uid()::text = user_id::text);
+
 -- ============ OPTIONAL: server-side ghost-flagging function ============
+
 
 
 -- Can be called on a schedule (Supabase cron / pg_cron) or from a Netlify

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'jobs' }) %>
+
+  <main class="dashboard">
+    <div class="dashboard-header">
+      <h2>🎯 Curated Jobs For You</h2>
+      <p>Jobs are ranked by how well they match your resume/profile skills, competencies, and experience.</p>
+    </div>
+
+    <div class="settings-section">
+      <h3>📄 Upload / Update Resume</h3>
+      <p>Upload your resume (PDF, Word .docx, or Markdown .md) to get better-curated matches based on your strengths, competencies, skills, experience, and domains.</p>
+      <div class="profile-resume-upload">
+        <button type="button" id="uploadResumeBtn" onclick="document.getElementById('resumeFileInput').click()">📤 Upload Resume</button>
+        <input type="file" id="resumeFileInput" accept=".pdf,.docx,.doc,.md,.txt" style="display:none" onchange="handleResumeUpload(event)" />
+        <span id="resumeStatus" class="screenshot-status"></span>
+      </div>
+      <% if (!hasResume) { %>
+        <p class="alert">No resume or skills on file yet — upload a resume above or <a href="/profile">add skills to your profile</a> to get personalized match scores.</p>
+      <% } %>
+    </div>
+
+    <div id="jobsList">
+      <% if (!jobs || jobs.length === 0) { %>
+        <p>No curated jobs available right now. Check back soon!</p>
+      <% } else { %>
+        <% jobs.forEach(function(job) { %>
+          <div class="card" style="margin-bottom:14px;" onclick="window.location='/jobs/<%= job.id %>'">
+            <div class="card-title"><%= job.title %> — <%= job.company %></div>
+            <div class="card-sub"><%= job.domain %><% if (job.location) { %> · <%= job.location %><% } %><% if (job.job_type || job.jobType) { %> · <%= job.job_type || job.jobType %><% } %></div>
+            <% if (job.ctc_lpa || job.ctcLpa) { %><div class="card-meta">💰 <%= job.ctc_lpa || job.ctcLpa %> LPA</div><% } %>
+            <div class="card-meta">
+              <strong>Match: <%= job.matchScore %>%</strong>
+              <span style="display:inline-block; width:120px; height:8px; background:#eee; border-radius:6px; overflow:hidden; vertical-align:middle; margin-left:8px;">
+                <span style="display:block; height:100%; width:<%= job.matchScore %>%; background:linear-gradient(90deg,#5b5bd6,#8a4fff);"></span>
+              </span>
+            </div>
+            <% if (job.alreadyApplied) { %><div class="new-tag" style="margin-top:6px;">Applied ✓</div><% } %>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </main>
+
+  <script>
+    async function parseJsonResponse(res) {
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error(res.ok ? 'Unexpected server response. Please try again.' : 'Server error (' + res.status + '). Please try again in a moment.');
+      }
+      return res.json();
+    }
+
+    function handleResumeUpload(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('resumeStatus');
+      statusEl.textContent = 'Analyzing resume...';
+      statusEl.style.color = '#888';
+      const uploadBtn = document.getElementById('uploadResumeBtn');
+      const restoreBtn = window.setButtonLoading ? window.setButtonLoading(uploadBtn, 'Analyzing...') : function () {};
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          const base64File = reader.result;
+          const res = await fetch('/api/upload-resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: base64File, filename: file.name })
+          });
+          const data = await parseJsonResponse(res);
+          if (!res.ok) throw new Error(data.error || 'Failed to process resume.');
+
+          statusEl.textContent = '✅ Resume processed! Refreshing your matches...';
+          statusEl.style.color = '#2ecc71';
+          if (window.showToast) window.showToast('Resume uploaded! Your curated job matches have been updated.', 'success');
+          setTimeout(() => window.location.reload(), 900);
+        } catch (err) {
+          const message = err.message || 'Could not process resume.';
+          statusEl.textContent = '❌ ' + message;
+          statusEl.style.color = '#c0392b';
+          if (window.showToast) window.showToast(message, 'error');
+        } finally {
+          evt.target.value = '';
+          restoreBtn();
+        }
+      };
+      reader.onerror = function () {
+        const message = 'Could not read the selected resume file.';
+        statusEl.textContent = '❌ ' + message;
+        statusEl.style.color = '#c0392b';
+        if (window.showToast) window.showToast(message, 'error');
+        restoreBtn();
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>

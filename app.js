@@ -250,6 +250,163 @@ async function setUserPlan(id, plan) {
   await db.from('users').update({ plan }).eq('id', id);
 }
 
+// ---------- Profile / Settings helpers ----------
+async function updateUserProfile(id, profile) {
+  const payload = {
+    professional_title: profile.professionalTitle || null,
+    professional_summary: profile.professionalSummary || null,
+    skills: profile.skills || null,
+    experience_years: profile.experienceYears || null
+  };
+  if (!useSupabase) return req_local_updateUserProfile(id, payload);
+  await db.from('users').update(payload).eq('id', id);
+}
+
+async function updateUserTheme(id, theme) {
+  if (!useSupabase) return req_local_updateUserTheme(id, theme);
+  await db.from('users').update({ theme_preference: theme }).eq('id', id);
+}
+
+// ---------- Resume storage + curated Job matching ----------
+async function saveUserResume(id, { filename, text }) {
+  const payload = {
+    resume_filename: filename || null,
+    resume_text: text || null,
+    resume_uploaded_at: new Date().toISOString()
+  };
+  if (!useSupabase) return req_local_saveUserResume(id, payload);
+  await db.from('users').update(payload).eq('id', id);
+}
+
+async function listJobs() {
+  if (!useSupabase) return req_local_listJobs();
+  const { data } = await db.from('jobs').select('*').order('created_at', { ascending: false });
+  return data || [];
+}
+
+async function getJob(id) {
+  if (!useSupabase) return req_local_getJob(id);
+  const { data } = await db.from('jobs').select('*').eq('id', id).maybeSingle();
+  return data;
+}
+
+async function hasAppliedToJob(userId, jobId) {
+  if (!useSupabase) return req_local_hasAppliedToJob(userId, jobId);
+  const { data } = await db
+    .from('job_applications')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+  return !!data;
+}
+
+async function recordJobApplication(userId, jobId) {
+  if (!useSupabase) return req_local_recordJobApplication(userId, jobId);
+  await db.from('job_applications').upsert(
+    { user_id: userId, job_id: jobId },
+    { onConflict: 'user_id,job_id' }
+  );
+}
+
+async function listAppliedJobIds(userId) {
+  if (!useSupabase) return req_local_listAppliedJobIds(userId);
+  const { data } = await db.from('job_applications').select('job_id').eq('user_id', userId);
+  return (data || []).map((r) => r.job_id);
+}
+
+// Tokenize a comma/whitespace separated skills/keywords string into a
+// normalized set of lowercase tokens for keyword-overlap matching.
+function tokenizeKeywords(text) {
+  if (!text) return new Set();
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[,\n]/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+  );
+}
+
+// Extract a broader bag of words from free-form resume text (for matching
+// against job skill keywords that may appear inline in the resume prose,
+// not just in a dedicated "skills" line).
+function tokenizeFreeText(text) {
+  if (!text) return new Set();
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s+.#-]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2)
+  );
+}
+
+// Compute a simple match score (0-100) between a user's resume/profile
+// strengths and a job's required skills, based on keyword overlap.
+function computeJobMatchScore(userKeywordSet, job) {
+  const jobSkills = tokenizeKeywords(job.skills);
+  if (jobSkills.size === 0) return 0;
+  let matched = 0;
+  const matchedSkills = [];
+  jobSkills.forEach((skill) => {
+    const skillTokens = skill.split(/\s+/).filter(Boolean);
+    const isMatch = skillTokens.every((t) => userKeywordSet.has(t)) || userKeywordSet.has(skill);
+    if (isMatch) {
+      matched += 1;
+      matchedSkills.push(skill);
+    }
+  });
+  const score = Math.round((matched / jobSkills.size) * 100);
+  return { score, matchedSkills, totalSkills: jobSkills.size };
+}
+
+// Build the combined keyword set representing the user's strengths,
+// competencies, skills, experience, and domains — pulled from both the
+// structured profile fields and the free-text resume, if available.
+function buildUserKeywordSet(user) {
+  const combined = new Set();
+  tokenizeKeywords(user.skills).forEach((k) => combined.add(k));
+  tokenizeFreeText(user.professional_title).forEach((k) => combined.add(k));
+  tokenizeFreeText(user.professional_summary).forEach((k) => combined.add(k));
+  tokenizeFreeText(user.resume_text).forEach((k) => combined.add(k));
+  return combined;
+}
+
+async function getCuratedJobMatches(user) {
+  const jobs = await listJobs();
+  const userKeywords = buildUserKeywordSet(user);
+  return jobs
+    .map((job) => {
+      const { score, matchedSkills, totalSkills } = computeJobMatchScore(userKeywords, job);
+      return { ...job, matchScore: score, matchedSkills, totalSkills };
+    })
+    .sort((a, b) => b.matchScore - a.matchScore);
+}
+
+
+// Extract structured professional profile info (title, summary, skills,
+// years of experience) from raw resume text using Claude. Used by the
+// "Auto-update from Resume" flow — results are always shown to the user for
+// review/confirmation before anything is saved (see /profile/parse-resume +
+// /profile POST routes).
+async function parseProfileFromResumeText(resumeText) {
+  if (!anthropicClient) throw new Error('Anthropic client not configured (ANTHROPIC_API_KEY missing).');
+  const response = await anthropicClient.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 500,
+    system:
+      'Extract professional profile information from this resume. Return ONLY a valid JSON object ' +
+      '(no markdown fences) with these exact keys: professionalTitle (string, e.g. current/most recent job title), ' +
+      'professionalSummary (string, 2-3 sentence professional summary), skills (string, comma-separated list of key skills), ' +
+      'experienceYears (string, total years of professional experience, e.g. "5"). Always include all keys even if empty string.',
+    messages: [{ role: 'user', content: resumeText }]
+  });
+  const text = response.content && response.content[0] && response.content[0].text;
+  return extractJsonFromClaudeText(text);
+}
+
+
 // ---------- Referral / Gamification helpers ----------
 async function incrementReferralCount(referrerId, newUserName) {
   if (!referrerId) return;
@@ -420,12 +577,126 @@ function ensureLocalDb() {
   const FileSync = require('lowdb/adapters/FileSync');
   const adapter = new FileSync(path.join(__dirname, 'db.json'));
   localDb = low(adapter);
-  localDb.defaults({ users: [], applications: [], feedback: [], waitlist: [] }).write();
+  localDb.defaults({ users: [], applications: [], feedback: [], waitlist: [], jobs: [], jobApplications: [] }).write();
 
+  // Seed curated jobs for local dev if empty, mirroring migrations/007 seed data.
+  if (localDb.get('jobs').size().value() === 0) {
+    localDb
+      .get('jobs')
+      .push(
+        {
+          id: uuidv4(),
+          title: 'Senior Product Manager',
+          company: 'Northwind Analytics',
+          domain: 'Product Management',
+          location: 'Bangalore',
+          jobType: 'Hybrid',
+          ctcLpa: '28-35',
+          skills: 'product strategy, stakeholder management, roadmapping, sql, user research, agile',
+          description: 'Own the roadmap for a B2B analytics suite used by 500+ enterprise customers.',
+          applyUrl: 'https://example.com/jobs/senior-pm-northwind',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'Product Manager - Growth',
+          company: 'Loopline',
+          domain: 'Product Management',
+          location: 'Remote',
+          jobType: 'Remote',
+          ctcLpa: '18-24',
+          skills: 'growth, a/b testing, sql, analytics, product strategy, experimentation',
+          description: 'Drive activation and retention experiments across the funnel.',
+          applyUrl: 'https://example.com/jobs/pm-growth-loopline',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'Software Engineer - Backend',
+          company: 'Vertex Cloud',
+          domain: 'Software Engineering',
+          location: 'Pune',
+          jobType: 'Hybrid',
+          ctcLpa: '15-22',
+          skills: 'node.js, postgresql, api design, microservices, aws, docker',
+          description: 'Build and scale backend services for a fintech platform.',
+          applyUrl: 'https://example.com/jobs/backend-vertex',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'Full Stack Developer',
+          company: 'Brightpath',
+          domain: 'Software Engineering',
+          location: 'Remote',
+          jobType: 'Remote',
+          ctcLpa: '12-18',
+          skills: 'javascript, react, node.js, express, mongodb, rest api',
+          description: 'Ship features end-to-end for a fast-growing HR tech startup.',
+          applyUrl: 'https://example.com/jobs/fullstack-brightpath',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'Data Analyst',
+          company: 'Marketwise',
+          domain: 'Data & Analytics',
+          location: 'Mumbai',
+          jobType: 'WFO',
+          ctcLpa: '8-12',
+          skills: 'sql, excel, tableau, python, data visualization, statistics',
+          description: 'Turn raw transaction data into actionable business insights.',
+          applyUrl: 'https://example.com/jobs/data-analyst-marketwise',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'HR Business Partner',
+          company: 'Solace HR',
+          domain: 'Human Resources',
+          location: 'Delhi',
+          jobType: 'WFO',
+          ctcLpa: '14-20',
+          skills: 'stakeholder management, employee relations, hr policy, performance management, organizational effectiveness',
+          description: 'Partner with leadership to drive org design and talent strategy.',
+          applyUrl: 'https://example.com/jobs/hrbp-solace',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'Marketing Manager',
+          company: 'Fable & Co',
+          domain: 'Marketing',
+          location: 'Bangalore',
+          jobType: 'Hybrid',
+          ctcLpa: '16-22',
+          skills: 'content strategy, seo, campaign management, brand marketing, analytics',
+          description: 'Lead brand campaigns across digital channels for a D2C label.',
+          applyUrl: 'https://example.com/jobs/marketing-mgr-fable',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: uuidv4(),
+          title: 'UX Designer',
+          company: 'Northwind Analytics',
+          domain: 'Design',
+          location: 'Remote',
+          jobType: 'Remote',
+          ctcLpa: '14-20',
+          skills: 'figma, user research, prototyping, interaction design, design systems',
+          description: 'Design intuitive workflows for enterprise analytics dashboards.',
+          applyUrl: 'https://example.com/jobs/ux-designer-northwind',
+          createdAt: new Date().toISOString()
+        }
+      )
+      .write();
+  }
 
   return localDb;
 }
+
 function req_local_findUserByEmail(email) {
+
   return ensureLocalDb().get('users').find({ email }).value();
 }
 function req_local_findUserById(id) {
@@ -446,6 +717,54 @@ function req_local_createUser(user) {
 function req_local_setUserPlan(id, plan) {
   ensureLocalDb().get('users').find({ id }).assign({ plan }).write();
 }
+function req_local_updateUserProfile(id, payload) {
+  ensureLocalDb()
+    .get('users')
+    .find({ id })
+    .assign({
+      professional_title: payload.professional_title,
+      professional_summary: payload.professional_summary,
+      skills: payload.skills,
+      experience_years: payload.experience_years
+    })
+    .write();
+}
+function req_local_updateUserTheme(id, theme) {
+  ensureLocalDb().get('users').find({ id }).assign({ theme_preference: theme }).write();
+}
+
+function req_local_saveUserResume(id, payload) {
+  ensureLocalDb()
+    .get('users')
+    .find({ id })
+    .assign({
+      resume_filename: payload.resume_filename,
+      resume_text: payload.resume_text,
+      resume_uploaded_at: payload.resume_uploaded_at
+    })
+    .write();
+}
+function req_local_listJobs() {
+  return ensureLocalDb().get('jobs').value();
+}
+function req_local_getJob(id) {
+  return ensureLocalDb().get('jobs').find({ id }).value();
+}
+function req_local_hasAppliedToJob(userId, jobId) {
+  return !!ensureLocalDb().get('jobApplications').find({ userId, jobId }).value();
+}
+function req_local_recordJobApplication(userId, jobId) {
+  if (req_local_hasAppliedToJob(userId, jobId)) return;
+  ensureLocalDb()
+    .get('jobApplications')
+    .push({ id: uuidv4(), userId, jobId, appliedAt: new Date().toISOString() })
+    .write();
+}
+function req_local_listAppliedJobIds(userId) {
+  return ensureLocalDb().get('jobApplications').filter({ userId }).value().map((r) => r.jobId);
+}
+
+
 function req_local_incrementReferralCount(referrerId, newUserName) {
   const referrer = ensureLocalDb().get('users').find({ id: referrerId }).value();
   if (!referrer) return;
@@ -776,7 +1095,197 @@ app.post('/feedback', requireAuth, async (req, res) => {
 });
 
 
+// ---------- Profile: professional info (manual entry + resume auto-fill w/ confirmation) ----------
+app.get('/profile', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  res.render('profile', { user, saved: req.query.saved === '1' });
+});
+
+app.post('/profile', requireAuth, async (req, res) => {
+  const { professionalTitle, professionalSummary, skills, experienceYears } = req.body;
+  await updateUserProfile(req.session.userId, { professionalTitle, professionalSummary, skills, experienceYears });
+  res.redirect('/profile?saved=1');
+});
+
+// Parse an uploaded resume (PDF) and return extracted profile fields as JSON.
+// The frontend shows these to the user for review; nothing is saved here —
+// saving only happens when the user confirms via the POST /profile form above.
+app.post('/api/parse-resume', requireAuth, apiLimiter, async (req, res) => {
+  try {
+    const { pdf } = req.body; // base64-encoded PDF (data URL or raw base64)
+    if (!pdf) return res.status(400).json({ error: 'Missing resume PDF data.' });
+
+    const base64Data = pdf.includes(',') ? pdf.split(',')[1] : pdf;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const { PDFParse } = require('pdf-parse');
+    const parser = new PDFParse({ data: buffer });
+    let pdfTextResult;
+    try {
+      pdfTextResult = await parser.getText();
+    } finally {
+      await parser.destroy();
+    }
+    const extractedText = (pdfTextResult.text || '').trim();
+    if (!extractedText) {
+      return res.status(422).json({ error: 'Could not extract any text from the resume.' });
+    }
+
+    const parsed = await parseProfileFromResumeText(extractedText);
+    if (!parsed) {
+      return res.status(422).json({ error: 'Could not extract profile details from the resume.' });
+    }
+    res.json({
+      professionalTitle: parsed.professionalTitle || '',
+      professionalSummary: parsed.professionalSummary || '',
+      skills: parsed.skills || '',
+      experienceYears: parsed.experienceYears || ''
+    });
+  } catch (err) {
+    console.error('parse-resume error:', err);
+    res.status(500).json({ error: err.message || 'Failed to parse resume.' });
+  }
+});
+
+// ---------- Resume upload (PDF/DOCX/MD) -> curated Job matches ----------
+// Extracts plain text from the uploaded resume file and saves it to the
+// user's profile, then computes curated job matches based on keyword
+// overlap between the resume + profile fields and each job's required
+// skills. No LLM call needed for the matching itself (fast + free).
+app.post('/api/upload-resume', requireAuth, apiLimiter, async (req, res) => {
+  try {
+    const { file, filename } = req.body; // base64 (data URL or raw) + original filename
+    if (!file || !filename) return res.status(400).json({ error: 'Missing resume file or filename.' });
+
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    const base64Data = file.includes(',') ? file.split(',')[1] : file;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    let extractedText = '';
+
+    if (ext === 'pdf') {
+      const { PDFParse } = require('pdf-parse');
+      const parser = new PDFParse({ data: buffer });
+      try {
+        const result = await parser.getText();
+        extractedText = (result.text || '').trim();
+      } finally {
+        await parser.destroy();
+      }
+    } else if (ext === 'docx' || ext === 'doc') {
+      const mammoth = require('mammoth');
+      const result = await mammoth.extractRawText({ buffer });
+      extractedText = (result.value || '').trim();
+    } else if (ext === 'md' || ext === 'txt') {
+      extractedText = buffer.toString('utf-8').trim();
+    } else {
+      return res.status(400).json({ error: 'Unsupported file type. Please upload a PDF, Word (.docx), or Markdown (.md) file.' });
+    }
+
+    if (!extractedText) {
+      return res.status(422).json({ error: 'Could not extract any text from the uploaded resume.' });
+    }
+
+    await saveUserResume(req.session.userId, { filename, text: extractedText });
+
+    const user = await findUserById(req.session.userId);
+    const matches = await getCuratedJobMatches(user);
+
+    res.json({
+      success: true,
+      filename,
+      topMatches: matches.slice(0, 5).map((m) => ({
+        id: m.id,
+        title: m.title,
+        company: m.company,
+        matchScore: m.matchScore
+      }))
+    });
+  } catch (err) {
+    console.error('upload-resume error:', err);
+    res.status(500).json({ error: err.message || 'Failed to process resume.' });
+  }
+});
+
+// ---------- Curated Jobs: view matches + apply in-app ----------
+app.get('/jobs', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  const matches = await getCuratedJobMatches(user);
+  const appliedJobIds = new Set(await listAppliedJobIds(user.id));
+  const jobsWithStatus = matches.map((j) => ({ ...j, alreadyApplied: appliedJobIds.has(j.id) }));
+  res.render('jobs', { user, jobs: jobsWithStatus, hasResume: !!(user.resume_text || user.skills) });
+});
+
+app.get('/jobs/:id', requireAuth, async (req, res) => {
+  const job = await getJob(req.params.id);
+  if (!job) return res.redirect('/jobs');
+  const user = await findUserById(req.session.userId);
+  const userKeywords = buildUserKeywordSet(user);
+  const { score, matchedSkills, totalSkills } = computeJobMatchScore(userKeywords, job);
+  const alreadyApplied = await hasAppliedToJob(user.id, job.id);
+  res.render('job-detail', {
+    user,
+    job: { ...job, matchScore: score, matchedSkills, totalSkills },
+    alreadyApplied,
+    applied: req.query.applied === '1'
+  });
+});
+
+app.post('/jobs/:id/apply', requireAuth, async (req, res) => {
+  const job = await getJob(req.params.id);
+  if (!job) return res.redirect('/jobs');
+  await recordJobApplication(req.session.userId, job.id);
+
+  // Also drop it into the main Kanban tracker as an "Applied" card so the
+  // user can follow its status (and get ghost-flagged) like any other app.
+  await createApplication({
+    userId: req.session.userId,
+    company: job.company,
+    role: job.title,
+    appliedDate: new Date().toISOString(),
+    location: job.location || (job.locationCity || ''),
+    ctcLpa: job.ctc_lpa || job.ctcLpa || '',
+    jobType: job.job_type || job.jobType || '',
+    notes: 'Applied via doneche curated Jobs'
+  });
+
+  res.redirect(`/jobs/${job.id}?applied=1`);
+});
+
+// ---------- Settings & Preferences (theme toggle) ----------
+
+app.get('/settings', requireAuth, async (req, res) => {
+  const user = await findUserById(req.session.userId);
+  res.render('settings', { user, saved: req.query.saved === '1' });
+});
+
+app.post('/settings/theme', requireAuth, async (req, res) => {
+  const { theme } = req.body;
+  const validThemes = ['light', 'dark'];
+  if (validThemes.includes(theme)) {
+    await updateUserTheme(req.session.userId, theme);
+  }
+  // Support both regular form submits (redirect) and fetch()-based toggles (JSON)
+  if (req.headers.accept && req.headers.accept.includes('application/json')) {
+    return res.json({ success: true, theme });
+  }
+  res.redirect('/settings?saved=1');
+});
+
+// ---------- Help / Documentation ----------
+app.get('/help', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('help', { user });
+});
+
+// ---------- FAQ ----------
+app.get('/faq', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('faq', { user });
+});
+
 // ---------- Legal pages (Terms & Privacy) ----------
+
 app.get('/terms', async (req, res) => {
   const user = req.session.userId ? await findUserById(req.session.userId) : null;
   res.render('terms', { user });

@@ -44,6 +44,18 @@
 
 <link rel="stylesheet" href="/style.css" />
 
+<!-- Apply saved theme preference ASAP to avoid a flash of the wrong theme.
+     Priority: logged-in user's saved theme_preference (passed from server) > localStorage > light default. -->
+<script>
+  (function () {
+    var serverTheme = <%- (typeof user !== 'undefined' && user && user.theme_preference) ? JSON.stringify(user.theme_preference) : 'null' %>;
+    var theme = serverTheme || localStorage.getItem('doneche_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('doneche_theme', theme);
+  })();
+</script>
+
+
 <!-- driver.js — lightweight onboarding tour library -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css" />
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js"></script>

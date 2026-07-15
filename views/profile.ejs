@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'profile' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="/dashboard" class="breadcrumb-back">&larr; Back</a>
+    <h2>🧑‍💼 Professional Profile</h2>
+    <p>Add your professional details manually, or upload your resume and we'll auto-fill the fields for you. Either way, <strong>nothing is saved until you review and confirm</strong> below.</p>
+
+    <div class="profile-resume-upload">
+      <button type="button" id="uploadResumeBtn" onclick="document.getElementById('resumeFileInput').click()">📄 Auto-fill from Resume (PDF)</button>
+      <input type="file" id="resumeFileInput" accept="application/pdf" style="display:none" onchange="handleResumeUpload(event)" />
+      <span id="resumeStatus" class="screenshot-status"></span>
+    </div>
+
+    <form method="POST" action="/profile" class="add-form profile-form" id="profileForm">
+      <label>Professional Title</label>
+      <input type="text" name="professionalTitle" id="professionalTitleInput" placeholder="e.g., Senior Product Manager" value="<%= user.professional_title || '' %>" />
+
+      <label>Professional Summary</label>
+      <textarea name="professionalSummary" id="professionalSummaryInput" rows="4" placeholder="A short summary of your professional background..."><%= user.professional_summary || '' %></textarea>
+
+      <label>Skills (comma-separated)</label>
+      <input type="text" name="skills" id="skillsInput" placeholder="e.g., Product Strategy, SQL, Stakeholder Management" value="<%= user.skills || '' %>" />
+
+      <label>Years of Experience</label>
+      <input type="text" name="experienceYears" id="experienceYearsInput" placeholder="e.g., 5" value="<%= user.experience_years || '' %>" />
+
+      <div id="resumeReviewNote" class="alert" style="display:none;">
+        ✅ Fields below were auto-filled from your resume. Please review and edit as needed, then click "Save Profile" to confirm.
+      </div>
+
+      <button type="submit">💾 Save Profile</button>
+    </form>
+
+    <% if (typeof saved !== 'undefined' && saved) { %>
+      <script>document.addEventListener('DOMContentLoaded', function () { if (window.showToast) window.showToast('Profile saved successfully!', 'success'); });</script>
+    <% } %>
+  </main>
+
+  <script>
+    async function parseJsonResponse(res) {
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error(res.ok ? 'Unexpected server response. Please try again.' : 'Server error (' + res.status + '). Please try again in a moment.');
+      }
+      return res.json();
+    }
+
+    function handleResumeUpload(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('resumeStatus');
+      statusEl.textContent = 'Analyzing resume...';
+      statusEl.style.color = '#888';
+      const uploadBtn = document.getElementById('uploadResumeBtn');
+      const restoreBtn = window.setButtonLoading ? window.setButtonLoading(uploadBtn, 'Analyzing...') : function () {};
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        try {
+          const base64Pdf = reader.result;
+          const res = await fetch('/api/parse-resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdf: base64Pdf })
+          });
+          const data = await parseJsonResponse(res);
+          if (!res.ok) throw new Error(data.error || 'Failed to parse resume.');
+
+          if (data.professionalTitle) document.getElementById('professionalTitleInput').value = data.professionalTitle;
+          if (data.professionalSummary) document.getElementById('professionalSummaryInput').value = data.professionalSummary;
+          if (data.skills) document.getElementById('skillsInput').value = data.skills;
+          if (data.experienceYears) document.getElementById('experienceYearsInput').value = data.experienceYears;
+
+          document.getElementById('resumeReviewNote').style.display = 'block';
+          statusEl.textContent = '✅ Auto-filled from resume! Please review before saving.';
+          statusEl.style.color = '#2ecc71';
+          if (window.showToast) window.showToast('Resume parsed! Review the fields and click Save Profile to confirm.', 'success');
+        } catch (err) {
+          const message = err.message || 'Could not parse resume.';
+          statusEl.textContent = '❌ ' + message;
+          statusEl.style.color = '#c0392b';
+          if (window.showToast) window.showToast(message, 'error');
+        } finally {
+          evt.target.value = '';
+          restoreBtn();
+        }
+      };
+      reader.onerror = function () {
+        const message = 'Could not read the selected resume file.';
+        statusEl.textContent = '❌ ' + message;
+        statusEl.style.color = '#c0392b';
+        if (window.showToast) window.showToast(message, 'error');
+        restoreBtn();
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'help' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="<%= user ? '/dashboard' : '/login' %>" class="breadcrumb-back">&larr; Back</a>
+    <h2>📘 Help &amp; Documentation</h2>
+    <p>Everything you need to know to get the most out of doneche.</p>
+
+    <div class="whats-new-entry">
+      <h3>🚀 Getting Started</h3>
+      <ul>
+        <li>Sign up for a free account, then head to your Dashboard (Board).</li>
+        <li>Click <strong>+ Add Application</strong> to log a job application: company, role, and applied date are required; location, CTC, job type, and HR contact are optional.</li>
+        <li>Use <strong>Magic Upload</strong> to auto-fill a new application from a screenshot or a PDF of your sent confirmation email.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>👻 The Ghosted Column</h3>
+      <ul>
+        <li>If a company doesn't update your application status (still "Applied" or "Interviewing") for 7+ days, we automatically flag it as "Ghosted".</li>
+        <li>From a Ghosted card, click "Copy follow-up email" to get a ready-to-send template, or "Send Email Now" if you've saved an HR email.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>🧑‍💼 Professional Profile</h3>
+      <ul>
+        <li>Go to <a href="/profile">Menu &rarr; Profile</a> to add your professional title, summary, skills, and years of experience.</li>
+        <li>You can type these in manually, or click "Auto-fill from Resume (PDF)" to upload your resume — we'll extract the details for you.</li>
+        <li>Either way, nothing is saved automatically: review the auto-filled fields and click <strong>Save Profile</strong> to confirm and store them.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>⚙️ Settings &amp; Preferences</h3>
+      <ul>
+        <li>Go to <a href="/settings">Menu &rarr; Settings &amp; Preferences</a> to toggle between Light and Dark mode.</li>
+        <li>Your theme choice is saved to your account and applied automatically on future visits.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>🎯 ATS Matcher &amp; Referrals</h3>
+      <ul>
+        <li>The ATS Matcher compares your resume against a job description to highlight missing keywords. Unlock it via a Pro plan or by referring 3 friends.</li>
+        <li>Share your unique invite link (the floating "Share App" button) to unlock rewards: 1 referral unlocks the AI Interview Simulator, 3 unlock the ATS Matcher, and 5 earns the "Ghostbuster" badge. Every referral also adds +5 application storage slots.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>💬 Feedback</h3>
+      <ul>
+        <li>Found a bug or have an idea? Use the floating "💬 Feedback" button on your dashboard any time — we read every submission.</li>
+      </ul>
+    </div>
+
+    <p>Still stuck? Check the <a href="/faq">FAQ</a> or send us feedback from your dashboard.</p>
+  </main>
+</body>
+</html>

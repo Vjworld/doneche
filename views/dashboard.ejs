@@ -29,43 +29,44 @@
     <% } %>
 
     <!-- "Milestone Unlock" (Feature Wall): AI Interviewer + Resume Matcher -->
-    <div class="beta-perk<%= gamification.aiSimulatorUnlocked ? '' : ' locked' %>">
-      <div class="beta-perk-badge">
+    <div class="beta-perks-row">
+      <div class="beta-perk<%= gamification.aiSimulatorUnlocked ? '' : ' locked' %>">
+        <div class="beta-perk-badge">
+          <% if (gamification.aiSimulatorUnlocked) { %>
+            🎁 Premium Beta Perk Unlocked
+          <% } else { %>
+            🔒 Invite 1 friend to unlock
+          <% } %>
+        </div>
+        <p class="beta-perk-desc">Practice your interview pitch directly with our AI Simulator.</p>
         <% if (gamification.aiSimulatorUnlocked) { %>
-          🎁 Premium Beta Perk Unlocked
+          <button type="button" class="beta-perk-btn" onclick="window.open('https://aistudio.instagram.com/ai/4265674450327484/?utm_source=share', '_blank')">
+            🚀 Launch AI Interviewer
+          </button>
         <% } else { %>
-          🔒 Locked — Invite 1 friend to unlock
+          <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 Unlock with 1 Referral</button>
         <% } %>
       </div>
-      <p class="beta-perk-desc">Practice your interview pitch directly with our AI Simulator.</p>
-      <% if (gamification.aiSimulatorUnlocked) { %>
-        <button type="button" class="beta-perk-btn" onclick="window.open('https://aistudio.instagram.com/ai/4265674450327484/?utm_source=share', '_blank')">
-          🚀 Launch AI Interviewer
-        </button>
-      <% } else { %>
-        <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 Unlock with 1 Referral</button>
-      <% } %>
-    </div>
 
-    <div class="beta-perk<%= gamification.resumeMatcherUnlocked ? '' : ' locked' %>">
-      <div class="beta-perk-badge">
+      <div class="beta-perk<%= gamification.resumeMatcherUnlocked ? '' : ' locked' %>">
+        <div class="beta-perk-badge">
+          <% if (gamification.resumeMatcherUnlocked) { %>
+            🎁 VIP Front-of-Line Access Unlocked
+          <% } else { %>
+            🔒 Invite 3 friends to unlock
+          <% } %>
+        </div>
+        <p class="beta-perk-desc">Get VIP front-of-line access to the upcoming AI Resume Matcher.</p>
         <% if (gamification.resumeMatcherUnlocked) { %>
-          🎁 VIP Front-of-Line Access Unlocked
+          <a href="/ats-matcher" class="beta-perk-btn">🎯 Try AI Resume Matcher</a>
         <% } else { %>
-          🔒 Locked — Invite 3 friends to unlock
+          <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 <%= gamification.referralsToNextUnlock %> more referral<%= gamification.referralsToNextUnlock === 1 ? '' : 's' %> needed</button>
         <% } %>
       </div>
-      <p class="beta-perk-desc">Get VIP front-of-line access to the upcoming AI Resume Matcher.</p>
-      <% if (gamification.resumeMatcherUnlocked) { %>
-        <a href="/ats-matcher" class="beta-perk-btn">🎯 Try AI Resume Matcher</a>
-      <% } else { %>
-        <button type="button" class="beta-perk-btn locked-btn" onclick="openReferralModal()">🔒 <%= gamification.referralsToNextUnlock %> more referral<%= gamification.referralsToNextUnlock === 1 ? '' : 's' %> needed</button>
-      <% } %>
     </div>
-
-
 
     <form method="POST" action="/applications" class="add-form" id="addAppForm">
+
 
       <input type="text" name="company" id="companyInput" placeholder="Company" required />
       <input type="text" name="role" id="roleInput" placeholder="Role" required />
@@ -147,34 +148,39 @@
       <% }) %>
     </div>
 
-    <!-- Coming Soon carousel -->
+    <!-- Coming Soon carousel — mirrors all features listed on /coming-soon,
+         auto-advances on a lazy interval (JS-driven; radios kept for a11y/manual nav) -->
     <div class="coming-soon">
       <h3>🔮 Coming Soon</h3>
-      <div class="carousel">
-        <input type="radio" name="carousel-slide" id="slide1" checked>
-        <input type="radio" name="carousel-slide" id="slide2">
-        <div class="carousel-track">
-          <div class="carousel-slide">
-            <div class="carousel-card">
-              <div class="carousel-icon">🔗</div>
-              <h4>LinkedIn Insider Match</h4>
-              <p>Instantly identify key connections at your applied companies.</p>
+      <div class="carousel" id="comingSoonCarousel">
+        <% const comingSoonSlides = [
+          { icon: '📄', title: 'Instant Profile Auto-Build', desc: 'Upload your resume and let AI auto-build your professional profile — you review & confirm before it saves.' },
+          { icon: '🎯', title: 'Hyper-Curated Job Matches', desc: 'Stop searching for jobs — get a curated feed matched to your exact strengths and experience.' },
+          { icon: '⚡', title: '1-Click Native Applications', desc: 'Apply directly in-app — no third-party portals. Applications auto-drop into your Kanban board.' },
+          { icon: '🔗', title: 'LinkedIn Insider Match', desc: 'Instantly identify key connections at your applied companies.' }
+        ]; %>
+        <% comingSoonSlides.forEach(function (s, i) { %>
+          <input type="radio" name="carousel-slide" id="slide<%= i + 1 %>" <%= i === 0 ? 'checked' : '' %>>
+        <% }) %>
+        <div class="carousel-track" style="width: <%= comingSoonSlides.length * 100 %>%">
+          <% comingSoonSlides.forEach(function (s, i) { %>
+            <div class="carousel-slide" style="width: <%= 100 / comingSoonSlides.length %>%">
+              <div class="carousel-card">
+                <div class="carousel-icon"><%= s.icon %></div>
+                <h4><%= s.title %></h4>
+                <p><%= s.desc %></p>
+              </div>
             </div>
-          </div>
-          <div class="carousel-slide">
-            <div class="carousel-card">
-              <div class="carousel-icon">🎯</div>
-              <h4>ATS Keyword Matcher</h4>
-              <p>Scan your resume against the JD to beat the HR bots.</p>
-            </div>
-          </div>
+          <% }) %>
         </div>
         <div class="carousel-dots">
-          <label for="slide1"></label>
-          <label for="slide2"></label>
+          <% comingSoonSlides.forEach(function (s, i) { %>
+            <label for="slide<%= i + 1 %>"></label>
+          <% }) %>
         </div>
       </div>
     </div>
+
   </main>
 
   <!-- Share App / Referral floating button (always visible, regardless of plan) -->
@@ -543,7 +549,42 @@
       });
     });
 
+    // ---------- Coming Soon carousel: auto-advance on a lazy interval ----------
+    document.addEventListener('DOMContentLoaded', function () {
+      const carousel = document.getElementById('comingSoonCarousel');
+      if (!carousel) return;
+      const track = carousel.querySelector('.carousel-track');
+      const slides = carousel.querySelectorAll('.carousel-slide');
+      const dots = carousel.querySelectorAll('.carousel-dots label');
+      const total = slides.length;
+      if (total <= 1) return;
+      let current = 0;
+
+      function goToSlide(i) {
+        current = (i + total) % total;
+        track.style.transform = 'translateX(-' + (current * (100 / total)) + '%)';
+        dots.forEach(function (d, idx) {
+          d.classList.toggle('active', idx === current);
+        });
+      }
+
+      // Sync clicking a dot (label) with the carousel position.
+      dots.forEach(function (d, idx) {
+        d.addEventListener('click', function () { goToSlide(idx); resetTimer(); });
+      });
+
+      goToSlide(0);
+
+      const LAZY_DELAY_MS = 4000; // standard lazy auto-advance delay
+      let timer = setInterval(function () { goToSlide(current + 1); }, LAZY_DELAY_MS);
+      function resetTimer() {
+        clearInterval(timer);
+        timer = setInterval(function () { goToSlide(current + 1); }, LAZY_DELAY_MS);
+      }
+    });
+
     // ---------- First-Time App Tour (driver.js) ----------
+
 
     document.addEventListener('DOMContentLoaded', function () {
       if (localStorage.getItem('tour_completed')) return;

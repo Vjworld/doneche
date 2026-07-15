@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'jobs' }) %>
+
+  <main class="dashboard">
+    <a href="/jobs">&larr; Back to Jobs</a>
+
+    <% if (applied) { %>
+      <p class="alert-success">🎉 You've applied! This job has also been added to your dashboard tracker as "Applied".</p>
+    <% } %>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title" style="font-size:1.3em;"><%= job.title %></div>
+      <div class="card-sub"><%= job.company %> · <%= job.domain %></div>
+
+      <div class="card-meta" style="margin-top:10px;">
+        <% if (job.location) { %>📍 <%= job.location %><% } %>
+        <% if (job.job_type || job.jobType) { %> · 🏢 <%= job.job_type || job.jobType %><% } %>
+        <% if (job.ctc_lpa || job.ctcLpa) { %> · 💰 <%= job.ctc_lpa || job.ctcLpa %> LPA<% } %>
+      </div>
+
+      <div style="margin-top:14px;">
+        <strong>Match Score: <%= job.matchScore %>%</strong>
+        <span style="display:inline-block; width:160px; height:10px; background:#eee; border-radius:6px; overflow:hidden; vertical-align:middle; margin-left:8px;">
+          <span style="display:block; height:100%; width:<%= job.matchScore %>%; background:linear-gradient(90deg,#5b5bd6,#8a4fff);"></span>
+        </span>
+        <div style="font-size:0.9em; color:#666; margin-top:4px;">
+          <%= job.matchedSkills.length %> of <%= job.totalSkills %> required skills matched
+          <% if (job.matchedSkills && job.matchedSkills.length) { %>
+            : <%= job.matchedSkills.join(', ') %>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (job.description) { %>
+        <div style="margin-top:16px;">
+          <h4>About this role</h4>
+          <p><%= job.description %></p>
+        </div>
+      <% } %>
+
+      <div style="margin-top:16px;">
+        <h4>Required Skills</h4>
+        <p><%= job.skills %></p>
+      </div>
+
+      <div style="margin-top:20px;">
+        <% if (alreadyApplied) { %>
+          <button disabled>✅ Applied</button>
+          <% if (job.apply_url || job.applyUrl) { %>
+            <a href="<%= job.apply_url || job.applyUrl %>" target="_blank" rel="noopener" style="margin-left:10px;">View original posting &rarr;</a>
+          <% } %>
+        <% } else { %>
+          <form method="POST" action="/jobs/<%= job.id %>/apply" onsubmit="return confirm('Apply to this job? It will also be added to your Applications tracker.');">
+            <button type="submit">🚀 Apply Now</button>
+          </form>
+          <% if (job.apply_url || job.applyUrl) { %>
+            <p style="font-size:0.85em; color:#888; margin-top:6px;">Applying here logs your interest in doneche. You may also need to complete the application on the employer's site: <a href="<%= job.apply_url || job.applyUrl %>" target="_blank" rel="noopener"><%= job.apply_url || job.applyUrl %></a></p>
+          <% } %>
+        <% } %>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

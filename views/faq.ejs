@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'faq' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="<%= user ? '/dashboard' : '/login' %>" class="breadcrumb-back">&larr; Back</a>
+    <h2>❓ Frequently Asked Questions</h2>
+
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>What counts as "Ghosted"?</summary>
+        <p>Any application still in "Applied" or "Interviewing" status that hasn't been updated for 7 or more days is automatically moved to the "Ghosted" column.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>How does Magic Upload work?</summary>
+        <p>Upload a screenshot of your application confirmation, or a PDF of the email you sent. We use AI to extract the company, role, and other details automatically — you can review and edit before saving.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is my resume or profile data used to auto-fill my profile without my permission?</summary>
+        <p>No. Whether you type your professional info manually or upload a resume for auto-fill, nothing is saved to your profile or our database until you explicitly review the fields and click "Save Profile".</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>How do I switch between light and dark mode?</summary>
+        <p>Go to Menu &rarr; Settings &amp; Preferences and click the theme toggle. Your preference is saved to your account.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>How many applications can I track for free?</summary>
+        <p>Free accounts start with a base capacity (shown on your dashboard). You can increase this by referring friends — each successful referral adds +5 slots — or upgrade to Pro for unlimited tracking.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>What do I get for referring friends?</summary>
+        <p>1 referral unlocks the AI Interview Simulator, 3 referrals unlock the AI Resume Matcher (ATS Matcher), and 5 referrals earns you the "Ghostbuster" badge. Every referral also adds +5 application storage slots.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Can I send a follow-up email directly from doneche?</summary>
+        <p>Yes. Any Ghosted card has a "Copy follow-up email" link with a ready-made template, and a "Send Email Now" button if you've saved the HR's email address.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>How do I report a bug or request a feature?</summary>
+        <p>Click the floating "💬 Feedback" button on your dashboard, choose a feedback type, and describe your issue or idea. We read every submission.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is my data secure?</summary>
+        <p>Yes. See our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms &amp; Conditions</a> for full details on how your data is stored and used.</p>
+      </details>
+    </div>
+
+    <p>Didn't find your answer? Check the <a href="/help">Help &amp; Documentation</a> page or send us feedback from your dashboard.</p>
+  </main>
+</body>
+</html>
