@@ -26,6 +26,12 @@
     <priority>0.4</priority>
   </url>
   <url>
+    <loc>https://doneche.shabdly.online/coming-soon</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
     <loc>https://doneche.shabdly.online/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>

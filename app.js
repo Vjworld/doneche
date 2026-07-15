@@ -420,7 +420,8 @@ function ensureLocalDb() {
   const FileSync = require('lowdb/adapters/FileSync');
   const adapter = new FileSync(path.join(__dirname, 'db.json'));
   localDb = low(adapter);
-  localDb.defaults({ users: [], applications: [], feedback: [] }).write();
+  localDb.defaults({ users: [], applications: [], feedback: [], waitlist: [] }).write();
+
 
   return localDb;
 }
@@ -791,6 +792,53 @@ app.get('/whats-new', async (req, res) => {
   const user = req.session.userId ? await findUserById(req.session.userId) : null;
   res.render('whats-new', { user });
 });
+
+// ---------- Coming Soon: Job Matchmaking Waitlist ----------
+app.get('/coming-soon', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('coming-soon', { user, error: null, success: false });
+});
+
+app.post('/coming-soon', authLimiter, async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  const { email } = req.body;
+  if (!email || !email.trim()) {
+    return res.render('coming-soon', { user, error: 'Please enter a valid email address.', success: false });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+
+  try {
+    if (useSupabase) {
+      await db.from('waitlist').upsert(
+        {
+          email: trimmedEmail,
+          user_id: user ? user.id : null,
+          source: 'coming-soon-page'
+        },
+        { onConflict: 'email' }
+      );
+    } else {
+      const existing = ensureLocalDb().get('waitlist').find({ email: trimmedEmail }).value();
+      if (!existing) {
+        ensureLocalDb()
+          .get('waitlist')
+          .push({
+            id: uuidv4(),
+            email: trimmedEmail,
+            userId: user ? user.id : null,
+            source: 'coming-soon-page',
+            createdAt: new Date().toISOString()
+          })
+          .write();
+      }
+    }
+    res.render('coming-soon', { user, error: null, success: true });
+  } catch (err) {
+    console.error('coming-soon waitlist signup error:', err);
+    res.render('coming-soon', { user, error: 'Something went wrong. Please try again.', success: false });
+  }
+});
+
 
 
 // ---------- Magic Upload: Screenshot Parsing (Claude) ----------

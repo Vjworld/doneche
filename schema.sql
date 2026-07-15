@@ -98,7 +98,24 @@ alter table feedback enable row level security;
 create policy "Users can view own feedback" on feedback
   for select using (auth.uid()::text = user_id::text);
 
+-- ============ WAITLIST (Coming Soon: Job Matchmaking) ============
+create table if not exists waitlist (
+  id uuid primary key default uuid_generate_v4(),
+  email text not null unique,
+  user_id uuid references users (id) on delete set null,
+  source text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_waitlist_email on waitlist (email);
+
+alter table waitlist enable row level security;
+
+create policy "Users can view own waitlist entry" on waitlist
+  for select using (auth.uid()::text = user_id::text);
+
 -- ============ OPTIONAL: server-side ghost-flagging function ============
+
 
 -- Can be called on a schedule (Supabase cron / pg_cron) or from a Netlify
 -- scheduled function as a backup to the on-request check in the app.

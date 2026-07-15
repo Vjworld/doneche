@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'coming-soon' }) %>
+  <main class="simple-page legal-page coming-soon-page">
+    <a href="<%= user ? '/dashboard' : '/login' %>" class="breadcrumb-back">&larr; Back</a>
+
+    <h2>🚀 The Next Evolution of doneche is Coming</h2>
+    <p class="coming-soon-lede">We conquered employer ghosting. Now, we are completely eliminating the job board scroll.</p>
+
+    <p>
+      Tracking your applications and automating follow-ups is only half the battle. The other half is finding
+      the right roles without spending four hours a day filtering out junk on job portals.
+    </p>
+    <p>
+      We are currently building the ultimate candidate-first job matchmaking engine directly into your doneche
+      dashboard.
+    </p>
+
+    <h3>Here is a sneak peek at what is dropping next:</h3>
+
+    <div class="whats-new-entry">
+      <h3>📄 Instant Profile Auto-Build</h3>
+      <p>Say goodbye to typing out your work history for the hundredth time.</p>
+      <ul>
+        <li>Upload your existing resume in any format (PDF, Word, or Markdown).</li>
+        <li>Our secure AI instantly extracts your core competencies, domain expertise, and technical skills.</li>
+        <li>The system auto-generates your complete professional profile.</li>
+        <li>You maintain total control: simply review, edit, and confirm the data before it officially saves to your database.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>🎯 Hyper-Curated Job Matches</h3>
+      <p>Stop searching for jobs. Let the jobs find you.</p>
+      <ul>
+        <li>Once your profile is locked in, doneche actively scans the market for you.</li>
+        <li>You receive a highly curated feed of open roles matched specifically to your exact strengths and experience level.</li>
+        <li>No more irrelevant listings, promoted junk, or roles outside of your actual domain.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry">
+      <h3>⚡ 1-Click Native Applications</h3>
+      <p>Never get redirected to a clunky third-party company portal again.</p>
+      <ul>
+        <li>Review full job descriptions and salary details right inside your customized feed.</li>
+        <li>Hit "Apply" directly from the doneche app.</li>
+        <li>Your auto-built profile and uploaded resume are instantly submitted, and the job automatically drops right into your Kanban tracking board.</li>
+      </ul>
+    </div>
+
+    <div class="whats-new-entry coming-soon-cta">
+      <h3>🔥 Want to skip the line?</h3>
+      <p>We are rolling these features out to our beta testers first. Secure your spot to get lifetime access to the matching engine before it goes public.</p>
+
+      <% if (typeof success !== 'undefined' && success) { %>
+        <p class="form-success">🎉 You're on the list! We'll email you the moment early access opens up.</p>
+      <% } else { %>
+        <% if (typeof error !== 'undefined' && error) { %>
+          <p class="form-error"><%= error %></p>
+        <% } %>
+        <form method="POST" action="/coming-soon" class="coming-soon-form">
+          <input type="email" name="email" placeholder="you@example.com" required />
+          <button type="submit" class="btn-primary">Join the Early Access Waitlist</button>
+        </form>
+      <% } %>
+    </div>
+  </main>
+</body>
+</html>

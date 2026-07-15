@@ -1,6 +1,17 @@
 # Changelog
 
+## v1.3.0 — 2026-07-15
+
+### Added
+- New "Coming Soon" page (`/coming-soon`) previewing the upcoming job-matchmaking engine: Instant Profile Auto-Build, Hyper-Curated Job Matches, and 1-Click Native Applications.
+- Early-access waitlist email capture form on the Coming Soon page, backed by a new `waitlist` table (Supabase) / lowdb collection (local dev).
+- New database migration `005_create_waitlist_table.sql` and corresponding `schema.sql` update.
+- Nav link to "Coming Soon" added across the app.
+- New CSS styling for the Coming Soon page (lede text, CTA card, waitlist form, success/error states).
+- `/coming-soon` route added to `sitemap.xml`.
+
 ## v1.2.0 — 2026-07-15
+
 
 ### Added
 - SEO/GEO: `robots.txt`, `sitemap.xml`, Open Graph/Twitter Card meta tags, and JSON-LD `SoftwareApplication` structured data for AI/search discovery.
