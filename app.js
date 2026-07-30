@@ -7,6 +7,20 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
+
+let Razorpay;
+let razorpayClient = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  Razorpay = require('razorpay');
+  razorpayClient = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+}
+
+const PRO_PLAN_AMOUNT_PAISE = 39900; // ₹399.00
+
 
 let Anthropic;
 let anthropicClient = null;
@@ -1044,17 +1058,70 @@ app.post('/ats-matcher', requireAuth, async (req, res) => {
   res.render('ats-matcher', { user, result: gaps });
 });
 
-// ---------- Pricing / Upgrade ----------
+// ---------- Pricing / Upgrade (Razorpay) ----------
 app.get('/pricing', requireAuth, async (req, res) => {
   const user = await findUserById(req.session.userId);
-  res.render('pricing', { user, upgrade: req.query.upgrade });
+  res.render('pricing', {
+    user,
+    upgrade: req.query.upgrade,
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
+    razorpayConfigured: !!razorpayClient
+  });
 });
 
-app.post('/upgrade', requireAuth, async (req, res) => {
-  // Placeholder upgrade path. Wire real Razorpay/Stripe checkout here.
-  await setUserPlan(req.session.userId, 'paid');
-  res.redirect('/dashboard');
+// Step 1: Create a Razorpay order for the Pro plan. Payment is NOT
+// considered complete until the client-side Checkout succeeds and we
+// verify the signature in POST /upgrade/verify below.
+app.post('/upgrade/create-order', requireAuth, async (req, res) => {
+  if (!razorpayClient) {
+    return res.status(500).json({ error: 'Payments are not configured yet. Please contact support.' });
+  }
+  try {
+    const order = await razorpayClient.orders.create({
+      amount: PRO_PLAN_AMOUNT_PAISE,
+      currency: 'INR',
+      receipt: `pro_upgrade_${req.session.userId}_${Date.now()}`,
+      notes: { userId: req.session.userId, plan: 'pro' }
+    });
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID
+    });
+  } catch (err) {
+    console.error('Razorpay order creation failed:', err);
+    res.status(500).json({ error: 'Could not initiate payment. Please try again.' });
+  }
 });
+
+// Step 2: Verify the payment signature returned by Razorpay Checkout after
+// the user actually completes payment. Only on successful signature
+// verification do we upgrade the user's plan to 'paid'.
+app.post('/upgrade/verify', requireAuth, async (req, res) => {
+  if (!razorpayClient) {
+    return res.status(500).json({ error: 'Payments are not configured yet.' });
+  }
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Missing payment verification details.' });
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (expectedSignature !== razorpay_signature) {
+    console.error('Razorpay signature verification failed for user', req.session.userId);
+    return res.status(400).json({ error: 'Payment verification failed.' });
+  }
+
+  // Signature valid — payment genuinely completed. Now upgrade the plan.
+  await setUserPlan(req.session.userId, 'paid');
+  res.json({ success: true });
+});
+
 
 // ---------- Feedback / Bug reports ----------
 app.post('/feedback', requireAuth, async (req, res) => {

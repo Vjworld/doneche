@@ -11,7 +11,8 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js", "ejs", "bcryptjs", "express", "express-session", "helmet", "express-rate-limit"]
+  external_node_modules = ["@supabase/supabase-js", "ejs", "bcryptjs", "express", "express-session", "helmet", "express-rate-limit", "razorpay"]
+
 
   included_files = ["views/**"]
 
@@ -42,5 +43,8 @@
 #   SESSION_SECRET
 #   APP_BASE_URL                (production URL, no trailing slash — e.g. https://doneche.shabdly.online — used to build referral invite links)
 #   ADSENSE_CLIENT_ID           (optional, e.g. ca-pub-XXXXXXXXXXXXXXXX — used once, see views/partials/head.ejs)
+#   RAZORPAY_KEY_ID             (Pro plan ₹399 upgrade payments — pricing page shows "Coming Soon" if unset)
+#   RAZORPAY_KEY_SECRET         (server-side only, never exposed to client — used to verify payment signatures)
+
 
 

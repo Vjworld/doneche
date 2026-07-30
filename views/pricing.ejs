@@ -10,6 +10,7 @@
     <% if (upgrade) { %>
       <div class="alert">Upgrade to Pro to unlock that feature.</div>
     <% } %>
+    <div id="upgrade-error" class="alert alert-error" style="display:none;"></div>
     <div class="pricing-cards">
       <div class="price-card">
         <h3>Free</h3>
@@ -36,13 +37,92 @@
 
         <% if (user.plan === 'paid') { %>
           <button disabled>Current Plan</button>
+        <% } else if (!razorpayConfigured) { %>
+          <button disabled title="Payments are being set up">Coming Soon</button>
         <% } else { %>
-          <form method="POST" action="/upgrade">
-            <button type="submit">Upgrade Now</button>
-          </form>
+          <button id="upgrade-btn" type="button">Upgrade Now &mdash; Pay ₹399</button>
         <% } %>
       </div>
     </div>
   </main>
+
+  <% if (user.plan !== 'paid' && razorpayConfigured) { %>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    (function () {
+      const btn = document.getElementById('upgrade-btn');
+      const errorBox = document.getElementById('upgrade-error');
+
+      function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.style.display = 'block';
+      }
+
+      btn.addEventListener('click', async function () {
+        errorBox.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        try {
+          const orderRes = await fetch('/upgrade/create-order', { method: 'POST' });
+          const orderData = await orderRes.json();
+          if (!orderRes.ok) throw new Error(orderData.error || 'Could not start payment.');
+
+          const options = {
+            key: orderData.keyId,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: 'Doneche',
+            description: 'Pro Plan Upgrade',
+            order_id: orderData.orderId,
+            handler: async function (response) {
+              try {
+                const verifyRes = await fetch('/upgrade/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature
+                  })
+                });
+                const verifyData = await verifyRes.json();
+                if (!verifyRes.ok || !verifyData.success) {
+                  throw new Error(verifyData.error || 'Payment verification failed.');
+                }
+                window.location.href = '/dashboard';
+              } catch (err) {
+                showError(err.message || 'Payment verification failed. If money was deducted, contact support.');
+                btn.disabled = false;
+                btn.textContent = 'Upgrade Now — Pay ₹399';
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                btn.disabled = false;
+                btn.textContent = 'Upgrade Now — Pay ₹399';
+              }
+            },
+            theme: { color: '#6366f1' }
+          };
+
+          const rzp = new Razorpay(options);
+          rzp.on('payment.failed', function (resp) {
+            showError('Payment failed: ' + (resp.error && resp.error.description ? resp.error.description : 'Please try again.'));
+            btn.disabled = false;
+            btn.textContent = 'Upgrade Now — Pay ₹399';
+          });
+          rzp.open();
+          btn.textContent = 'Upgrade Now — Pay ₹399';
+          btn.disabled = false;
+        } catch (err) {
+          showError(err.message || 'Something went wrong. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Upgrade Now — Pay ₹399';
+        }
+      });
+    })();
+  </script>
+  <% } %>
 </body>
 </html>
