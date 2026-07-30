@@ -11,13 +11,26 @@ const crypto = require('crypto');
 
 let Razorpay;
 let razorpayClient = null;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+// Trim to defend against accidental leading/trailing whitespace or newlines
+// pasted into the Netlify UI, which silently breaks Razorpay's Basic Auth.
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || '').trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
   Razorpay = require('razorpay');
   razorpayClient = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_KEY_SECRET
   });
+  console.log(
+    'Razorpay client configured. Key ID prefix:',
+    RAZORPAY_KEY_ID.slice(0, 8),
+    '| mode:',
+    RAZORPAY_KEY_ID.startsWith('rzp_live_') ? 'LIVE' : (RAZORPAY_KEY_ID.startsWith('rzp_test_') ? 'TEST' : 'UNKNOWN')
+  );
+} else {
+  console.warn('Razorpay NOT configured — RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET missing at function startup.');
 }
+
 
 const PRO_PLAN_AMOUNT_PAISE = 39900; // ₹399.00
 
@@ -130,6 +143,15 @@ function daysSince(dateStr) {
 // ---------- Email notifications (Nodemailer / Gmail) ----------
 const FEEDBACK_ALERT_EMAIL = 'vaibhavseluk@gmail.com';
 
+// The "From" address shown to end users on outbound emails (welcome, password
+// reset, etc). This is independent of EMAIL_USER, which is the Gmail mailbox
+// used to actually authenticate with SMTP. For the From address below to be
+// honored by Gmail (rather than silently rewritten to EMAIL_USER), it must be
+// added as a verified "Send mail as" alias under the EMAIL_USER Gmail
+// account's settings (Settings > Accounts > Send mail as).
+const EMAIL_FROM_ADDRESS = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+const EMAIL_FROM = `"doneche" <${EMAIL_FROM_ADDRESS}>`;
+
 const mailTransporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -141,8 +163,9 @@ const mailTransporter = nodemailer.createTransport({
 async function sendFeedbackAlertEmail({ userIdentifier, feedbackType, message }) {
   try {
     await mailTransporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: EMAIL_FROM,
       to: FEEDBACK_ALERT_EMAIL,
+
       subject: `🚨 New Doneche Feedback: ${feedbackType}`,
       text: `A new feedback submission has been received on Doneche.
 
@@ -991,9 +1014,10 @@ app.post('/forgot-password', authLimiter, async (req, res) => {
     const resetUrl = `${process.env.APP_BASE_URL || ''}/reset-password?token=${token}`;
     try {
       await mailTransporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: EMAIL_FROM,
         to: user.email,
         subject: 'Reset your doneche password',
+
         text: `Hi ${user.name || ''},\n\nWe received a request to reset your doneche password. Click the link below to set a new password (this link expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.\n\n— doneche`
       });
     } catch (err) {
@@ -1160,10 +1184,11 @@ app.get('/pricing', requireAuth, async (req, res) => {
   res.render('pricing', {
     user,
     upgrade: req.query.upgrade,
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
+    razorpayKeyId: RAZORPAY_KEY_ID,
     razorpayConfigured: !!razorpayClient
   });
 });
+
 
 // Step 1: Create a Razorpay order for the Pro plan. Payment is NOT
 // considered complete until the client-side Checkout succeeds and we
@@ -1183,13 +1208,24 @@ app.post('/upgrade/create-order', requireAuth, async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID
+      keyId: RAZORPAY_KEY_ID
     });
   } catch (err) {
-    console.error('Razorpay order creation failed:', err);
+    // Razorpay SDK errors typically have shape: { statusCode, error: { code, description, ... } }
+    // Log the full detail so the actual root cause (auth failure, account not
+    // activated, bad request, etc.) is visible in Netlify function logs —
+    // the generic message below is all the client ever sees.
+    const rzpError = err && err.error ? err.error : err;
+    console.error('Razorpay order creation failed:', {
+      statusCode: err && err.statusCode,
+      code: rzpError && rzpError.code,
+      description: rzpError && rzpError.description,
+      raw: rzpError
+    });
     res.status(500).json({ error: 'Could not initiate payment. Please try again.' });
   }
 });
+
 
 // Step 2: Verify the payment signature returned by Razorpay Checkout after
 // the user actually completes payment. Only on successful signature
@@ -1204,9 +1240,10 @@ app.post('/upgrade/verify', requireAuth, async (req, res) => {
   }
 
   const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .createHmac('sha256', RAZORPAY_KEY_SECRET)
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest('hex');
+
 
   if (expectedSignature !== razorpay_signature) {
     console.error('Razorpay signature verification failed for user', req.session.userId);
