@@ -25,6 +25,7 @@
           <a href="/settings" class="<%= typeof activePage !== 'undefined' && activePage === 'settings' ? 'active' : '' %>">⚙️ Settings &amp; Preferences</a>
           <a href="/help" class="<%= typeof activePage !== 'undefined' && activePage === 'help' ? 'active' : '' %>">📘 Help / Documentation</a>
           <a href="/faq" class="<%= typeof activePage !== 'undefined' && activePage === 'faq' ? 'active' : '' %>">❓ FAQ</a>
+          <a href="/about" class="<%= typeof activePage !== 'undefined' && activePage === 'about' ? 'active' : '' %>">ℹ️ About Us</a>
           <hr />
           <form method="POST" action="/logout">
             <button type="submit" class="link-btn nav-menu-logout">🚪 Logout</button>
@@ -34,6 +35,7 @@
     <% } else { %>
       <a href="/login" class="<%= typeof activePage !== 'undefined' && activePage === 'login' ? 'active' : '' %>">Log In</a>
       <a href="/register" class="<%= typeof activePage !== 'undefined' && activePage === 'register' ? 'active' : '' %>">Sign Up</a>
+      <a href="/about" class="<%= typeof activePage !== 'undefined' && activePage === 'about' ? 'active' : '' %>">About</a>
       <a href="/help" class="<%= typeof activePage !== 'undefined' && activePage === 'help' ? 'active' : '' %>">Help</a>
       <a href="/faq" class="<%= typeof activePage !== 'undefined' && activePage === 'faq' ? 'active' : '' %>">FAQ</a>
     <% } %>

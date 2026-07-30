@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'problem-solution' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="javascript:history.back()" class="breadcrumb-back">&larr; Back</a>
+
+    <h2>🧩 The Problem &amp; Our Solution</h2>
+
+    <h3>The Problem</h3>
+    <p>Job hunting today is broken in a very specific way: <strong>silence</strong>. You apply to dozens of roles, sometimes hundreds, and most companies never respond at all. You're left:</p>
+    <ul>
+      <li>Manually maintaining a spreadsheet (or worse, sticky notes) to track every application</li>
+      <li>Constantly wondering "did they see my application?" or "should I follow up?"</li>
+      <li>Forgetting to follow up until it's too late, or following up too aggressively</li>
+      <li>Losing motivation as the uncertainty piles up across dozens of open applications</li>
+    </ul>
+
+    <h3>Our Solution</h3>
+    <p>doneche replaces manual tracking + guesswork with an automated system built specifically for the "silence" problem:</p>
+    <ul>
+      <li><strong>Automatic Ghost Detection</strong> — no more wondering; after 7 days of silence, doneche tells you.</li>
+      <li><strong>One-click Follow-ups</strong> — a ready-made, professional follow-up email template for every ghosted application.</li>
+      <li><strong>Magic Upload</strong> — skip manual data entry entirely; just upload a screenshot or forward an email.</li>
+      <li><strong>Visual Kanban Board</strong> — see your entire job search pipeline at a glance.</li>
+      <li><strong>Curated Job Matching</strong> — get matched to real openings based on your actual skills and resume.</li>
+    </ul>
+
+    <p>The result: less anxiety, less manual admin, more momentum. <a href="/register">Try doneche free</a>.</p>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>
+
+

@@ -26,8 +26,12 @@ create table if not exists users (
   -- ============ RESUME (curated job matching) ============
   resume_filename text,
   resume_text text,
-  resume_uploaded_at timestamptz
+  resume_uploaded_at timestamptz,
+  -- ============ PASSWORD RESET ============
+  reset_token text,
+  reset_token_expires timestamptz
 );
+
 
 
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'how-it-works' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="javascript:history.back()" class="breadcrumb-back">&larr; Back</a>
+
+    <h2>⚙️ How doneche Works</h2>
+    <p>doneche turns your chaotic job search into a simple, visual Kanban board — with automation doing the heavy lifting.</p>
+
+    <h3>1. Log every application</h3>
+    <p>Add applications manually, or use <strong>Magic Upload</strong> to snap a screenshot of your confirmation email/page or forward the confirmation email — our AI extracts the company, role, and date automatically.</p>
+
+    <h3>2. Track status on your Kanban board</h3>
+    <p>Every application lives in one of five columns: <em>Applied → Interviewing → Ghosted → Rejected → Offered</em>. Drag and drop cards as things progress.</p>
+
+    <h3>3. Get auto-flagged when you're ghosted</h3>
+    <p>If a card sits in "Applied" or "Interviewing" for 7+ days with no update, doneche automatically moves it to "Ghosted" — no manual tracking needed.</p>
+
+    <h3>4. Follow up in one click</h3>
+    <p>Every Ghosted card comes with a ready-made follow-up email template. Copy it, tweak it, and send — or use "Send Email Now" if you've saved the HR contact's email.</p>
+
+    <h3>5. Level up with referrals</h3>
+    <p>Invite friends to unlock the AI Interview Simulator, the AI Resume/ATS Matcher, and extra application storage slots.</p>
+
+    <h3>6. Explore curated Jobs</h3>
+    <p>Upload your resume and doneche will match you against curated job listings based on your skills and experience — apply in-app with one click.</p>
+
+    <p>Ready to try it? <a href="/register">Create your free account</a> or read about <a href="/problem-solution">the problem we solve</a>.</p>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>
+
+

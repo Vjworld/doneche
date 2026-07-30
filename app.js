@@ -264,6 +264,22 @@ async function setUserPlan(id, plan) {
   await db.from('users').update({ plan }).eq('id', id);
 }
 
+// ---------- Password reset (server-managed token flow) ----------
+async function setUserResetToken(id, token, expiresAt) {
+  if (!useSupabase) return req_local_setUserResetToken(id, token, expiresAt);
+  await db.from('users').update({ reset_token: token, reset_token_expires: expiresAt }).eq('id', id);
+}
+async function findUserByResetToken(token) {
+  if (!useSupabase) return req_local_findUserByResetToken(token);
+  const { data } = await db.from('users').select('*').eq('reset_token', token).maybeSingle();
+  return data;
+}
+async function updateUserPassword(id, passwordHash) {
+  if (!useSupabase) return req_local_updateUserPassword(id, passwordHash);
+  await db.from('users').update({ password_hash: passwordHash, reset_token: null, reset_token_expires: null }).eq('id', id);
+}
+
+
 // ---------- Profile / Settings helpers ----------
 async function updateUserProfile(id, profile) {
   const payload = {
@@ -731,6 +747,20 @@ function req_local_createUser(user) {
 function req_local_setUserPlan(id, plan) {
   ensureLocalDb().get('users').find({ id }).assign({ plan }).write();
 }
+function req_local_setUserResetToken(id, token, expiresAt) {
+  ensureLocalDb().get('users').find({ id }).assign({ reset_token: token, reset_token_expires: expiresAt }).write();
+}
+function req_local_findUserByResetToken(token) {
+  return ensureLocalDb().get('users').find({ reset_token: token }).value();
+}
+function req_local_updateUserPassword(id, passwordHash) {
+  ensureLocalDb()
+    .get('users')
+    .find({ id })
+    .assign({ password: passwordHash, password_hash: passwordHash, reset_token: null, reset_token_expires: null })
+    .write();
+}
+
 function req_local_updateUserProfile(id, payload) {
   ensureLocalDb()
     .get('users')
@@ -937,6 +967,72 @@ app.post('/login', authLimiter, async (req, res) => {
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
+
+// ---------- Forgot / Reset Password (server-managed token flow) ----------
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', { error: null, success: false });
+});
+
+app.post('/forgot-password', authLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.trim()) {
+    return res.render('forgot-password', { error: 'Please enter your email address.', success: false });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const user = await findUserByEmail(trimmedEmail);
+
+  // Always show success (don't leak whether an email is registered), but
+  // only actually send a reset email if the user exists.
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    await setUserResetToken(user.id, token, expiresAt);
+
+    const resetUrl = `${process.env.APP_BASE_URL || ''}/reset-password?token=${token}`;
+    try {
+      await mailTransporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Reset your doneche password',
+        text: `Hi ${user.name || ''},\n\nWe received a request to reset your doneche password. Click the link below to set a new password (this link expires in 1 hour):\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.\n\n— doneche`
+      });
+    } catch (err) {
+      console.error('Failed to send password reset email:', err);
+    }
+  }
+
+  res.render('forgot-password', { error: null, success: true });
+});
+
+app.get('/reset-password', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/forgot-password');
+  const user = await findUserByResetToken(token);
+  const expired = !user || !user.reset_token_expires || new Date(user.reset_token_expires) < new Date();
+  res.render('reset-password', { token, error: expired ? 'This reset link is invalid or has expired. Please request a new one.' : null, success: false });
+});
+
+app.post('/reset-password', authLimiter, async (req, res) => {
+  const { token, password, confirmPassword } = req.body;
+  if (!token) return res.redirect('/forgot-password');
+
+  const user = await findUserByResetToken(token);
+  const expired = !user || !user.reset_token_expires || new Date(user.reset_token_expires) < new Date();
+  if (expired) {
+    return res.render('reset-password', { token, error: 'This reset link is invalid or has expired. Please request a new one.', success: false });
+  }
+  if (!password || password.length < 6) {
+    return res.render('reset-password', { token, error: 'Password must be at least 6 characters.', success: false });
+  }
+  if (password !== confirmPassword) {
+    return res.render('reset-password', { token, error: 'Passwords do not match.', success: false });
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+  await updateUserPassword(user.id, hash);
+  res.render('reset-password', { token: null, error: null, success: true });
+});
+
 
 // ---------- Dashboard / Kanban ----------
 app.get('/dashboard', requireAuth, async (req, res) => {
@@ -1362,6 +1458,33 @@ app.get('/privacy', async (req, res) => {
   const user = req.session.userId ? await findUserById(req.session.userId) : null;
   res.render('privacy', { user });
 });
+
+// ---------- Marketing / Static informational pages ----------
+app.get('/about', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('about', { user });
+});
+
+app.get('/how-it-works', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('how-it-works', { user });
+});
+
+app.get('/problem-solution', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('problem-solution', { user });
+});
+
+app.get('/who-is-it-for', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('who-is-it-for', { user });
+});
+
+app.get('/best-practices', async (req, res) => {
+  const user = req.session.userId ? await findUserById(req.session.userId) : null;
+  res.render('best-practices', { user });
+});
+
 
 // ---------- What's New ----------
 app.get('/whats-new', async (req, res) => {

@@ -22,7 +22,10 @@
           <label>Email</label>
           <input type="email" name="email" required />
           <label>Password</label>
-          <input type="password" name="password" required minlength="6" />
+          <div class="password-field">
+            <input type="password" name="password" id="registerPassword" required minlength="6" />
+            <button type="button" class="password-toggle-btn" aria-label="Show password" onclick="togglePasswordVisibility('registerPassword', this)">👁️</button>
+          </div>
 
           <label class="checkbox-label">
             <input type="checkbox" name="acceptTerms" required />
@@ -36,5 +39,17 @@
       </div>
     </div>
   </div>
+
+  <%- include('partials/footer') %>
+
+  <script>
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁️' : '🙈';
+      btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    }
+  </script>
 </body>
 </html>

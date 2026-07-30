@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><%- include('partials/head') %></head>
+<body>
+  <%- include('partials/nav', { user, activePage: 'about' }) %>
+
+  <main class="simple-page legal-page">
+    <a href="javascript:history.back()" class="breadcrumb-back">&larr; Back</a>
+
+    <h2><span class="ghost-emoji">👻</span> About doneche</h2>
+
+    <p>doneche was built out of a very simple, very frustrating experience: applying to dozens of jobs and hearing... nothing. No rejection, no update, just silence — otherwise known as being "ghosted."</p>
+
+    <p>We built doneche to take the guesswork and anxiety out of job hunting. Instead of manually checking your inbox and wondering if a company forgot about you, doneche tracks every application you submit and automatically flags it as "Ghosted" the moment a company goes silent for 7+ days. From there, you get a ready-made follow-up email template so you can nudge them without agonizing over what to write.</p>
+
+    <h3>Our Mission</h3>
+    <p>To give job seekers clarity, momentum, and confidence — by replacing uncertainty with a clear, actionable system for managing the entire job search process.</p>
+
+    <h3>Who's Behind doneche</h3>
+    <p>doneche is built and operated by Ruvab IT, a small team obsessed with solving real, everyday frustrations with simple, elegant software.</p>
+
+    <h3>What Makes Us Different</h3>
+    <ul>
+      <li><strong>Automatic ghost detection</strong> — no manual status tracking required.</li>
+      <li><strong>One-click follow-ups</strong> — never stare at a blank email again.</li>
+      <li><strong>AI-powered Magic Upload</strong> — snap a screenshot or forward an email, and we'll extract the details.</li>
+      <li><strong>Built for real job seekers</strong> — not recruiters, not companies. Just you.</li>
+    </ul>
+
+    <p>Want to learn more? Check out <a href="/how-it-works">How It Works</a>, <a href="/problem-solution">the Problem We Solve</a>, or <a href="/who-is-it-for">Who doneche Is For</a>.</p>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>
+
+
