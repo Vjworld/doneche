@@ -3,26 +3,129 @@
 <head><%- include('partials/head') %></head>
 <body>
   <%- include('partials/nav', { user, activePage: 'ats-matcher' }) %>
-  <main class="simple-page">
+  <main class="simple-page ats-page">
     <a href="/dashboard" class="breadcrumb-back">&larr; Back to Board</a>
-    <h2>ATS Keyword Matcher <span class="badge">PRO</span></h2>
+
+    <div class="ats-header">
+      <h2>ATS Keyword Matcher <span class="badge">PRO</span></h2>
+      <p class="ats-subtitle">Paste a job description and your resume to find missing keywords ATS bots look for.</p>
+    </div>
 
     <% if (user.plan !== 'paid') { %>
       <div class="alert">This is a Pro feature. <a href="/pricing">Upgrade for ₹399/mo</a> to unlock unlimited ATS matches.</div>
     <% } %>
-    <form method="POST" action="/ats-matcher">
-      <label>Job Description</label>
-      <textarea name="jobDescription" rows="6" required></textarea>
-      <label>Your Resume Text</label>
-      <textarea name="resume" rows="6" required></textarea>
-      <button type="submit">Find Keyword Gaps</button>
+
+    <form method="POST" action="/ats-matcher" class="ats-form">
+      <div class="ats-grid">
+        <div class="ats-field">
+          <label for="jobDescription">Job Description</label>
+          <textarea id="jobDescription" name="jobDescription" placeholder="Paste the full job description here..." required></textarea>
+        </div>
+        <div class="ats-field">
+          <label for="resume">Your Resume Text</label>
+          <textarea id="resume" name="resume" placeholder="Paste your resume text here..." required></textarea>
+        </div>
+      </div>
+      <div class="ats-actions">
+        <button type="submit" class="btn-primary">Find Keyword Gaps</button>
+      </div>
     </form>
+
     <% if (result) { %>
-      <h3>Top missing keywords:</h3>
-      <ul>
-        <% result.forEach(function(w) { %><li><%= w %></li><% }) %>
-      </ul>
+      <div class="ats-results">
+        <h3>Top missing keywords</h3>
+        <% if (result.length) { %>
+          <ul class="keyword-chips">
+            <% result.forEach(function(w) { %><li><%= w %></li><% }) %>
+          </ul>
+        <% } else { %>
+          <p class="ats-empty">Great match! No significant keyword gaps found.</p>
+        <% } %>
+      </div>
     <% } %>
   </main>
+
+  <style>
+    .ats-page { max-width: 1000px; }
+    .ats-header { margin-bottom: 18px; }
+    .ats-subtitle { color: var(--text-muted, #666); margin: 6px 0 0; font-size: 0.95em; }
+    .ats-form { margin-top: 22px; }
+    .ats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .ats-field { display: flex; flex-direction: column; }
+    .ats-field label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.95em;
+    }
+    .ats-field textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #d9d9e3;
+      font-size: 0.95em;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+    .ats-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .ats-actions .btn-primary {
+      padding: 12px 28px;
+      font-size: 1em;
+      border-radius: 8px;
+      border: none;
+      background: #5b5bf0;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .ats-actions .btn-primary:hover { background: #4747d1; }
+    .ats-results {
+      margin-top: 32px;
+      padding: 20px;
+      background: #f7f7fb;
+      border-radius: 10px;
+    }
+    .ats-results h3 { margin-top: 0; }
+    .keyword-chips {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0;
+      margin: 12px 0 0;
+    }
+    .keyword-chips li {
+      background: #fff3cd;
+      color: #7a5a00;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 500;
+    }
+    .ats-empty { margin: 12px 0 0; color: #2e7d32; font-weight: 500; }
+
+    html[data-theme="dark"] .ats-field textarea {
+      background: #14141f;
+      border-color: #2a2a3a;
+      color: #e5e5f0;
+    }
+    html[data-theme="dark"] .ats-results { background: #14141f; }
+    html[data-theme="dark"] .keyword-chips li { background: #3a2f00; color: #ffd873; }
+
+    @media (max-width: 800px) {
+      .ats-grid { grid-template-columns: 1fr; }
+      .ats-actions { justify-content: stretch; }
+      .ats-actions .btn-primary { width: 100%; }
+    }
+  </style>
 </body>
 </html>
