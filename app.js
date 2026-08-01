@@ -1195,15 +1195,33 @@ app.get('/pricing', requireAuth, async (req, res) => {
 // verify the signature in POST /upgrade/verify below.
 app.post('/upgrade/create-order', requireAuth, async (req, res) => {
   if (!razorpayClient) {
+    console.error('Razorpay order creation attempted but client is not configured (missing RAZORPAY_KEY_ID/SECRET).');
     return res.status(500).json({ error: 'Payments are not configured yet. Please contact support.' });
   }
+
+  // Guard against a misconfigured/missing amount constant reaching the API
+  // as NaN or 0, which Razorpay would reject.
+  const amountInPaise = Math.round(Number(PRO_PLAN_AMOUNT_PAISE));
+  if (!amountInPaise || amountInPaise <= 0) {
+    console.error('Invalid PRO_PLAN_AMOUNT_PAISE value:', PRO_PLAN_AMOUNT_PAISE);
+    return res.status(500).json({ error: 'Payment amount misconfigured. Please contact support.' });
+  }
+
   try {
+    // Razorpay enforces a strict 40-character limit on the `receipt` field.
+    // Using the full userId (often a 36-char UUID) plus a prefix/timestamp
+    // easily exceeds this and causes the API to reject the request with a
+    // 400 (which previously surfaced to the client as an opaque 500).
+    // Keep the receipt short and unique instead.
+    const receipt = `rcpt_pro_${Date.now().toString().slice(-8)}`;
+
     const order = await razorpayClient.orders.create({
-      amount: PRO_PLAN_AMOUNT_PAISE,
+      amount: amountInPaise, // amount must be in paise (₹399 => 39900)
       currency: 'INR',
-      receipt: `pro_upgrade_${req.session.userId}_${Date.now()}`,
+      receipt,
       notes: { userId: req.session.userId, plan: 'pro' }
     });
+
     res.json({
       orderId: order.id,
       amount: order.amount,
@@ -1213,18 +1231,24 @@ app.post('/upgrade/create-order', requireAuth, async (req, res) => {
   } catch (err) {
     // Razorpay SDK errors typically have shape: { statusCode, error: { code, description, ... } }
     // Log the full detail so the actual root cause (auth failure, account not
-    // activated, bad request, etc.) is visible in Netlify function logs —
-    // the generic message below is all the client ever sees.
+    // activated, bad request, invalid receipt, etc.) is visible in the
+    // server/Netlify function logs — the generic message below is all the
+    // client ever sees, so this logging is essential for debugging.
     const rzpError = err && err.error ? err.error : err;
-    console.error('Razorpay order creation failed:', {
+    console.error('Razorpay order creation failed (details):', {
+
       statusCode: err && err.statusCode,
       code: rzpError && rzpError.code,
       description: rzpError && rzpError.description,
       raw: rzpError
     });
-    res.status(500).json({ error: 'Could not initiate payment. Please try again.' });
+    const clientMessage = (rzpError && rzpError.description)
+      ? `Could not initiate payment: ${rzpError.description}`
+      : 'Could not initiate payment. Please try again.';
+    res.status(500).json({ error: clientMessage });
   }
 });
+
 
 
 // Step 2: Verify the payment signature returned by Razorpay Checkout after
